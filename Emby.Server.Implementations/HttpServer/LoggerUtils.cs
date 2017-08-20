@@ -19,20 +19,20 @@ namespace Emby.Server.Implementations.HttpServer
         {
             var url = request.Url.ToString();
 
-            logger.Info("{0} {1}. UserAgent: {2}", request.IsWebSocketRequest ? "WS" : "HTTP " + request.HttpMethod, url, request.UserAgent ?? string.Empty);
+            logger.Debug("{0} {1}. UserAgent: {2}", request.IsWebSocketRequest ? "WS" : "HTTP " + request.HttpMethod, url, request.UserAgent ?? string.Empty);
         }
 
         public static void LogRequest(ILogger logger, string url, string method, string userAgent, QueryParamCollection headers)
         {
             if (headers == null)
             {
-                logger.Info("{0} {1}. UserAgent: {2}", "HTTP " + method, url, userAgent ?? string.Empty);
+                logger.Debug("{0} {1}. UserAgent: {2}", "HTTP " + method, url, userAgent ?? string.Empty);
             }
             else
             {
                 var headerText = string.Join(", ", headers.Select(i => i.Name + "=" + i.Value).ToArray(headers.Count));
 
-                logger.Info("HTTP {0} {1}. {2}", method, url, headerText);
+                logger.Debug("HTTP {0} {1}. {2}", method, url, headerText);
             }
         }
 
@@ -50,7 +50,7 @@ namespace Emby.Server.Implementations.HttpServer
             var logSuffix = durationMs >= 1000 && durationMs < 60000 ? "ms (slow)" : "ms";
 
             var headerText = headers == null ? string.Empty : "Headers: " + string.Join(", ", headers.Where(i => i.Name.IndexOf("Access-", StringComparison.OrdinalIgnoreCase) == -1).Select(i => i.Name + "=" + i.Value).ToArray());
-            logger.Info("HTTP Response {0} to {1}. Time: {2}{3}. {4} {5}", statusCode, endPoint, Convert.ToInt32(durationMs).ToString(CultureInfo.InvariantCulture), logSuffix, url, headerText);
+            logger.Debug("HTTP Response {0} to {1}. Time: {2}{3}. {4} {5}", statusCode, endPoint, Convert.ToInt32(durationMs).ToString(CultureInfo.InvariantCulture), logSuffix, url, headerText);
         }
     }
 }

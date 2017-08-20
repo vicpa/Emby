@@ -241,7 +241,7 @@ namespace Emby.Drawing
             if (originalImageSize.HasValue && options.HasDefaultOptions(originalImagePath, originalImageSize.Value) && !autoOrient)
             {
                 // Just spit out the original file if all the options are default
-                _logger.Info("Returning original image {0}", originalImagePath);
+                _logger.Debug("Returning original image {0}", originalImagePath);
                 return new Tuple<string, string, DateTime>(originalImagePath, MimeTypes.GetMimeType(originalImagePath), dateModified);
             }
 

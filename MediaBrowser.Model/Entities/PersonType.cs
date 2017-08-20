@@ -38,5 +38,9 @@ namespace MediaBrowser.Model.Entities
         /// The lyricist
         /// </summary>
         public const string Lyricist = "Lyricist";
+        /// <summary>
+        /// The Performer
+        /// </summary>
+        public const string Performer = "Performer";
     }
 }

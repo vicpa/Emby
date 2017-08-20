@@ -159,7 +159,7 @@ namespace Emby.Server.Implementations.HttpServer
 
                 if (string.IsNullOrWhiteSpace(RangeHeader) || (RangeStart <= 0 && RangeEnd >= TotalContentLength - 1))
                 {
-                    Logger.Info("Transmit file {0}", Path);
+                    Logger.Debug("Transmit file {0}", Path);
                     await response.TransmitFile(Path, 0, 0, FileShare, cancellationToken).ConfigureAwait(false);
                     return;
                 }
