@@ -101,7 +101,7 @@ namespace Emby.Server.Implementations.HttpServer
             var rangeString = string.Format("bytes {0}-{1}/{2}", RangeStart, RangeEnd, TotalContentLength);
             Headers["Content-Range"] = rangeString;
 
-            Logger.Info("Setting range response values for {0}. RangeRequest: {1} Content-Length: {2}, Content-Range: {3}", Path, RangeHeader, lengthString, rangeString);
+            Logger.Debug("Setting range response values for {0}. RangeRequest: {1} Content-Length: {2}, Content-Range: {3}", Path, RangeHeader, lengthString, rangeString);
         }
 
         /// <summary>
