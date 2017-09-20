@@ -159,7 +159,14 @@ namespace Emby.Server.Implementations.HttpServer
 
                 if (string.IsNullOrWhiteSpace(RangeHeader) || (RangeStart <= 0 && RangeEnd >= TotalContentLength - 1))
                 {
+<<<<<<< HEAD
                     Logger.Debug("Transmit file {0}", Path);
+=======
+                    Logger.Info("Transmit file {0}", Path);
+
+                    //var count = FileShare == FileShareMode.ReadWrite ? TotalContentLength : 0;
+
+>>>>>>> refs/remotes/MediaBrowser/master
                     await response.TransmitFile(Path, 0, 0, FileShare, cancellationToken).ConfigureAwait(false);
                     return;
                 }
