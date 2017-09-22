@@ -60,14 +60,9 @@ namespace Emby.Server.Implementations.HttpServer
             var durationMs = duration.TotalMilliseconds;
             var logSuffix = durationMs >= 1000 && durationMs < 60000 ? "ms (slow)" : "ms";
 
-<<<<<<< HEAD
-            var headerText = headers == null ? string.Empty : "Headers: " + string.Join(", ", headers.Where(i => i.Name.IndexOf("Access-", StringComparison.OrdinalIgnoreCase) == -1).Select(i => i.Name + "=" + i.Value).ToArray());
-            logger.Debug("HTTP Response {0} to {1}. Time: {2}{3}. {4} {5}", statusCode, endPoint, Convert.ToInt32(durationMs).ToString(CultureInfo.InvariantCulture), logSuffix, url, headerText);
-=======
             //var headerText = headers == null ? string.Empty : "Headers: " + string.Join(", ", headers.Where(i => i.Name.IndexOf("Access-", StringComparison.OrdinalIgnoreCase) == -1).Select(i => i.Name + "=" + i.Value).ToArray());
             var headerText = string.Empty;
-            logger.Info("HTTP Response {0} to {1}. Time: {2}{3}. {4} {5}", statusCode, endPoint, Convert.ToInt32(durationMs).ToString(CultureInfo.InvariantCulture), logSuffix, url, headerText);
->>>>>>> refs/remotes/MediaBrowser/master
+            logger.Debug("HTTP Response {0} to {1}. Time: {2}{3}. {4} {5}", statusCode, endPoint, Convert.ToInt32(durationMs).ToString(CultureInfo.InvariantCulture), logSuffix, url, headerText);
         }
     }
 }
