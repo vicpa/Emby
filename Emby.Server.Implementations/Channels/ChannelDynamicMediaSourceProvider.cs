@@ -20,7 +20,7 @@ namespace Emby.Server.Implementations.Channels
 
         public async Task<IEnumerable<MediaSourceInfo>> GetMediaSources(IHasMediaSources item, CancellationToken cancellationToken)
         {
-            var baseItem = (BaseItem) item;
+            var baseItem = (BaseItem)item;
 
             if (baseItem.SourceType == SourceType.Channel)
             {
@@ -38,7 +38,7 @@ namespace Emby.Server.Implementations.Channels
             return new List<MediaSourceInfo>();
         }
 
-        public Task<Tuple<MediaSourceInfo, IDirectStreamProvider>> OpenMediaSource(string openToken, bool allowLiveStreamProbe, CancellationToken cancellationToken)
+        public Task<Tuple<MediaSourceInfo, IDirectStreamProvider>> OpenMediaSource(string openToken, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }

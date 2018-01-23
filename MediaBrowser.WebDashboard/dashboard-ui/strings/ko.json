@@ -1,6 +1,4 @@
 {
-    "AllLibraries": "All libraries",
-    "HeaderAllowMediaDeletionFrom": "Allow Media Deletion From",
     "LabelPrevious": "\uc774\uc804",
     "LabelFinish": "\ub05d\ub0b4\uae30",
     "LabelNext": "\ub2e4\uc74c",
@@ -25,6 +23,8 @@
     "LabelAddConnectSupporterHelp": "\ubaa9\ub85d\uc5d0 \uc5c6\ub294 \uc0ac\uc6a9\uc790\ub97c \ucd94\uac00\ud558\ub824\uba74 \uc0ac\uc6a9\uc790 \ud504\ub85c\ud30c\uc77c \ud398\uc774\uc9c0\uc5d0\uc11c Emby Connect\uc5d0 \uba3c\uc800 \uc5f0\uacb0\ud558\uc5ec\uc57c \ud569\ub2c8\ub2e4.",
     "LabelPinCode": "PIN \ucf54\ub4dc:",
     "DeleteMedia": "\ubbf8\ub514\uc5b4 \uc9c0\uc6b0\uae30",
+    "AllowRemoteAccess": "Allow remote connections to this Emby Server.",
+    "AllowRemoteAccessHelp": "If unchecked, all remote connections will be blocked.",
     "HeaderSync": "\ub3d9\uae30\ud654",
     "HeaderPlayAll": "\ubaa8\ub450 \uc7ac\uc0dd",
     "HeaderUpcomingNews": "Upcoming News",
@@ -254,7 +254,8 @@
     "HeaderFeatureAccess": "\uae30\ub2a5 \uc811\uadfc",
     "OptionAllowMediaPlayback": "\ubbf8\ub514\uc5b4 \uc7ac\uc0dd \ud5c8\uc6a9",
     "OptionAllowBrowsingLiveTv": "TV \ubc29\uc1a1 \uc811\uc18d \ud5c8\uc6a9",
-    "HeaderMediaDeletion": "Media Deletion",
+    "AllLibraries": "All libraries",
+    "HeaderAllowMediaDeletionFrom": "Allow Media Deletion From",
     "AllowDeletionFromAll": "Allow media deletion from all libraries",
     "OptionAllowManageLiveTv": "TV \ubc29\uc1a1 \ub179\ud654 \uad00\ub9ac \ud5c8\uc6a9",
     "OptionAllowRemoteControlOthers": "\uac00\ub978 \uc0ac\uc6a9\uc790 \uc6d0\uaca9 \uc81c\uc5b4 \ud5c8\uc6a9",
@@ -1759,5 +1760,8 @@
     "LabelSimultaneousConnectionLimit": "Simultaneous stream limit:",
     "SimultaneousConnectionLimitHelp": "The maximum number of allowed simultaneous streams. Enter 0 for no limit.",
     "LaunchWebAppOnStartup": "Launch the Emby web app in my web browser when Emby Server starts",
-    "LaunchWebAppOnStartupHelp": "This will open the web app in your default web browser when Emby Server initially starts. This will not occur when using the restart server function."
+    "LaunchWebAppOnStartupHelp": "This will open the web app in your default web browser when Emby Server initially starts. This will not occur when using the restart server function.",
+    "LabelUserAgent": "User agent:",
+    "UserAgentHelp": "Supply a custom user-agent http header, if necessary.",
+    "HeaderConfigureRemoteAccess": "Configure Remote Access"
 }

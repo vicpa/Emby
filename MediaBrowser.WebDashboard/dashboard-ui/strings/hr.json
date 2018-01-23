@@ -1,6 +1,4 @@
 {
-    "AllLibraries": "All libraries",
-    "HeaderAllowMediaDeletionFrom": "Allow Media Deletion From",
     "LabelPrevious": "Prethodni",
     "LabelFinish": "Kraj",
     "LabelNext": "Sljede\u0107i",
@@ -25,6 +23,8 @@
     "LabelAddConnectSupporterHelp": "Za dodavanje korisnika koji nije na popisu, morat \u0107ete najprije povezati njihov ra\u010dun na \"Emby Connect\" iz njihovog korisni\u010dkog profila.",
     "LabelPinCode": "PIN:",
     "DeleteMedia": "Delete media",
+    "AllowRemoteAccess": "Allow remote connections to this Emby Server.",
+    "AllowRemoteAccessHelp": "If unchecked, all remote connections will be blocked.",
     "HeaderSync": "Sink.",
     "HeaderPlayAll": "Play All",
     "HeaderUpcomingNews": "Upcoming News",
@@ -254,7 +254,8 @@
     "HeaderFeatureAccess": "Pristup opcijama",
     "OptionAllowMediaPlayback": "Dopusti reprodukciju medija",
     "OptionAllowBrowsingLiveTv": "Dopusti pristup TV u\u017eivo",
-    "HeaderMediaDeletion": "Media Deletion",
+    "AllLibraries": "All libraries",
+    "HeaderAllowMediaDeletionFrom": "Allow Media Deletion From",
     "AllowDeletionFromAll": "Allow media deletion from all libraries",
     "OptionAllowManageLiveTv": "Dopusti upravljanje snimanja TV u\u017eivo",
     "OptionAllowRemoteControlOthers": "Dopusti daljinsko upravljanje drugih korisnika",
@@ -1759,5 +1760,8 @@
     "LabelSimultaneousConnectionLimit": "Simultaneous stream limit:",
     "SimultaneousConnectionLimitHelp": "The maximum number of allowed simultaneous streams. Enter 0 for no limit.",
     "LaunchWebAppOnStartup": "Launch the Emby web app in my web browser when Emby Server starts",
-    "LaunchWebAppOnStartupHelp": "This will open the web app in your default web browser when Emby Server initially starts. This will not occur when using the restart server function."
+    "LaunchWebAppOnStartupHelp": "This will open the web app in your default web browser when Emby Server initially starts. This will not occur when using the restart server function.",
+    "LabelUserAgent": "User agent:",
+    "UserAgentHelp": "Supply a custom user-agent http header, if necessary.",
+    "HeaderConfigureRemoteAccess": "Configure Remote Access"
 }

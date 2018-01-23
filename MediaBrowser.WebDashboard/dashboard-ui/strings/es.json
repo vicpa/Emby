@@ -1,6 +1,4 @@
 {
-    "AllLibraries": "All libraries",
-    "HeaderAllowMediaDeletionFrom": "Allow Media Deletion From",
     "LabelPrevious": "Anterior",
     "LabelFinish": "Terminar",
     "LabelNext": "Siguiente",
@@ -25,6 +23,8 @@
     "LabelAddConnectSupporterHelp": "Para agregar a un usuario que no est\u00e1 en el listado, usted tiene primero que conectar su cuenta con Emby Connect desde la p\u00e1gina de perfil del usuario.",
     "LabelPinCode": "C\u00f3digo PIN:",
     "DeleteMedia": "Eliminar medios",
+    "AllowRemoteAccess": "Allow remote connections to this Emby Server.",
+    "AllowRemoteAccessHelp": "If unchecked, all remote connections will be blocked.",
     "HeaderSync": "Sincronizar",
     "HeaderPlayAll": "Reproducir todo",
     "HeaderUpcomingNews": "Pr\u00f3ximas Noticias",
@@ -254,7 +254,8 @@
     "HeaderFeatureAccess": "Permisos de acceso",
     "OptionAllowMediaPlayback": "Permitir la reproducci\u00f3n de medios",
     "OptionAllowBrowsingLiveTv": "Permitir acceso a la TV en vivo",
-    "HeaderMediaDeletion": "Media Deletion",
+    "AllLibraries": "All libraries",
+    "HeaderAllowMediaDeletionFrom": "Allow Media Deletion From",
     "AllowDeletionFromAll": "Allow media deletion from all libraries",
     "OptionAllowManageLiveTv": "Habilitar la administraci\u00f3n de grabaci\u00f3n de TV en vivo",
     "OptionAllowRemoteControlOthers": "Habilitar el control remote de otros usuarios",
@@ -1759,5 +1760,8 @@
     "LabelSimultaneousConnectionLimit": "Simultaneous stream limit:",
     "SimultaneousConnectionLimitHelp": "The maximum number of allowed simultaneous streams. Enter 0 for no limit.",
     "LaunchWebAppOnStartup": "Launch the Emby web app in my web browser when Emby Server starts",
-    "LaunchWebAppOnStartupHelp": "This will open the web app in your default web browser when Emby Server initially starts. This will not occur when using the restart server function."
+    "LaunchWebAppOnStartupHelp": "This will open the web app in your default web browser when Emby Server initially starts. This will not occur when using the restart server function.",
+    "LabelUserAgent": "User agent:",
+    "UserAgentHelp": "Supply a custom user-agent http header, if necessary.",
+    "HeaderConfigureRemoteAccess": "Configure Remote Access"
 }

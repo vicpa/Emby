@@ -1,6 +1,4 @@
 {
-    "AllLibraries": "All libraries",
-    "HeaderAllowMediaDeletionFrom": "Allow Media Deletion From",
     "LabelPrevious": "Anteriorul",
     "LabelFinish": "Termin\u0103",
     "LabelNext": "Urm\u0103torul",
@@ -25,6 +23,8 @@
     "LabelAddConnectSupporterHelp": "Pentru a ad\u0103uga un utilizator care nu este listat, va trebui s\u0103 lega\u021bi mai \u00eent\u00e2i contul lor la Emby Connect de la pagina lor de profil de utilizator.",
     "LabelPinCode": "Codul Pin:",
     "DeleteMedia": "\u0218tergere fi\u0219iere media",
+    "AllowRemoteAccess": "Allow remote connections to this Emby Server.",
+    "AllowRemoteAccessHelp": "If unchecked, all remote connections will be blocked.",
     "HeaderSync": "Sincronizeaz\u0103",
     "HeaderPlayAll": "Play All",
     "HeaderUpcomingNews": "\u0218tiri viitoare",
@@ -254,7 +254,8 @@
     "HeaderFeatureAccess": "Acces Facilit\u0103\u021bi",
     "OptionAllowMediaPlayback": "Permite redarea media",
     "OptionAllowBrowsingLiveTv": "Permite accessul la Live TV",
-    "HeaderMediaDeletion": "\u0218tergere fi\u0219iere media",
+    "AllLibraries": "All libraries",
+    "HeaderAllowMediaDeletionFrom": "Allow Media Deletion From",
     "AllowDeletionFromAll": "Permite \u0219tergerea de fi\u0219iere media din toate bibliotecile",
     "OptionAllowManageLiveTv": "Permite administrarea \u00eenregistrarilor pentru Live TV ",
     "OptionAllowRemoteControlOthers": "Permite controlul la distan\u021b\u0103 a celorlal\u021bi utilizatori",
@@ -610,7 +611,7 @@
     "LabelMusicStreamingTranscodingBitrateHelp": "Specify a max bitrate when streaming music",
     "OptionIgnoreTranscodeByteRangeRequests": "Ignore transcode byte range requests",
     "OptionIgnoreTranscodeByteRangeRequestsHelp": "If enabled, these requests will be honored but will ignore the byte range header.",
-    "LabelFriendlyName": "Friendly name",
+    "LabelFriendlyName": "Friendly name:",
     "LabelManufacturer": "Manufacturer",
     "LabelManufacturerUrl": "Manufacturer url",
     "LabelModelName": "Model name",
@@ -1759,5 +1760,8 @@
     "LabelSimultaneousConnectionLimit": "Simultaneous stream limit:",
     "SimultaneousConnectionLimitHelp": "The maximum number of allowed simultaneous streams. Enter 0 for no limit.",
     "LaunchWebAppOnStartup": "Launch the Emby web app in my web browser when Emby Server starts",
-    "LaunchWebAppOnStartupHelp": "This will open the web app in your default web browser when Emby Server initially starts. This will not occur when using the restart server function."
+    "LaunchWebAppOnStartupHelp": "This will open the web app in your default web browser when Emby Server initially starts. This will not occur when using the restart server function.",
+    "LabelUserAgent": "User agent:",
+    "UserAgentHelp": "Supply a custom user-agent http header, if necessary.",
+    "HeaderConfigureRemoteAccess": "Configure Remote Access"
 }

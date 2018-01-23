@@ -1,6 +1,4 @@
 {
-    "AllLibraries": "Tutte le librerie",
-    "HeaderAllowMediaDeletionFrom": "Abilita Eliminazione Media Da",
     "LabelPrevious": "Precedente",
     "LabelFinish": "Finito",
     "LabelNext": "Prossimo",
@@ -25,6 +23,8 @@
     "LabelAddConnectSupporterHelp": "Per aggiungere un utente non in lista, dovrai prima collegare il suo account a Emby Connect dalla pagina del suo profilo",
     "LabelPinCode": "Codice pin:",
     "DeleteMedia": "Elimina media",
+    "AllowRemoteAccess": "Allow remote connections to this Emby Server.",
+    "AllowRemoteAccessHelp": "If unchecked, all remote connections will be blocked.",
     "HeaderSync": "Sinc.",
     "HeaderPlayAll": "Riproduci Tutti",
     "HeaderUpcomingNews": "Notizie in Arrivo",
@@ -254,7 +254,8 @@
     "HeaderFeatureAccess": "Accesso alle funzionalit\u00e0",
     "OptionAllowMediaPlayback": "Consenti la riproduzione dei media",
     "OptionAllowBrowsingLiveTv": "Consenti accesso alla TV in Diretta",
-    "HeaderMediaDeletion": "Eliminazione Media",
+    "AllLibraries": "Tutte le librerie",
+    "HeaderAllowMediaDeletionFrom": "Abilita Eliminazione Media Da",
     "AllowDeletionFromAll": "Consenti l'eliminazione dei media da tutte le librerie",
     "OptionAllowManageLiveTv": "Consenti la gestione delle registrazioni TV",
     "OptionAllowRemoteControlOthers": "Consenti il controllo remoto di altri utenti",
@@ -1759,5 +1760,8 @@
     "LabelSimultaneousConnectionLimit": "Limite stream simultanei:",
     "SimultaneousConnectionLimitHelp": "Numero massimo di streaming simultanei permessi. Inserisci 0 per nessun limite.",
     "LaunchWebAppOnStartup": "Lancia l'app web Emby nel mio browser web quando Emby Server si avvia",
-    "LaunchWebAppOnStartupHelp": "Ci\u00f2 aprir\u00e0 l'app Web nel browser Web predefinito all'avvio iniziale di Emby Server. Ci\u00f2 non si verifica quando si utilizza la funzione del server di riavvio."
+    "LaunchWebAppOnStartupHelp": "Ci\u00f2 aprir\u00e0 l'app Web nel browser Web predefinito all'avvio iniziale di Emby Server. Ci\u00f2 non si verifica quando si utilizza la funzione del server di riavvio.",
+    "LabelUserAgent": "User agent:",
+    "UserAgentHelp": "Supply a custom user-agent http header, if necessary.",
+    "HeaderConfigureRemoteAccess": "Configure Remote Access"
 }

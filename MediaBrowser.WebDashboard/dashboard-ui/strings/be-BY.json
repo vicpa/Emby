@@ -1,6 +1,4 @@
 {
-    "AllLibraries": "All libraries",
-    "HeaderAllowMediaDeletionFrom": "Allow Media Deletion From",
     "LabelPrevious": "\u041f\u0430\u043f\u044f\u0440\u044d\u0434\u043d\u044f\u0435",
     "LabelFinish": "\u0413\u0430\u0442\u043e\u0432\u0430",
     "LabelNext": "\u041d\u0430\u0441\u0442\u0443\u043f\u043d\u0430\u0435",
@@ -25,6 +23,8 @@
     "LabelAddConnectSupporterHelp": "\u041a\u0430\u0431 \u0434\u0430\u0434\u0430\u0446\u044c \u043a\u0430\u0440\u044b\u0441\u0442\u0430\u043b\u044c\u043d\u0456\u043a\u0430, \u044f\u043a\u043e\u0433\u0430 \u043d\u044f\u043c\u0430 \u045e \u0441\u043f\u0456\u0441\u0435, \u0441\u043f\u0430\u0447\u0430\u0442\u043a\u0443 \u043d\u0435\u0430\u0431\u0445\u043e\u0434\u043d\u0430 \u0437\u0432\u044f\u0437\u0430\u0446\u044c \u044f\u0433\u043e, \u0441\u0442\u0432\u0430\u0440\u044b\u045e \u0440\u0430\u0445\u0443\u043d\u0430\u043a \u0437 Emby Connect \u0437 \u044f\u0433\u043e \u0441\u0442\u0430\u0440\u043e\u043d\u043a\u0456 \u043f\u0440\u043e\u0444\u0456\u043b\u044e \u043a\u0430\u0440\u044b\u0441\u0442\u0430\u043b\u044c\u043d\u0456\u043a\u0430.",
     "LabelPinCode": "PIN-\u043a\u043e\u0434:",
     "DeleteMedia": "Delete media",
+    "AllowRemoteAccess": "Allow remote connections to this Emby Server.",
+    "AllowRemoteAccessHelp": "If unchecked, all remote connections will be blocked.",
     "HeaderSync": "\u0421\u0456\u043d\u0445\u0440\u0430\u043d\u0456\u0437\u0430\u0446\u044b\u044f",
     "HeaderPlayAll": "Play All",
     "HeaderUpcomingNews": "Upcoming News",
@@ -65,7 +65,7 @@
     "FolderTypeMusicVideos": "Music videos",
     "FolderTypeGames": "Games",
     "FolderTypeBooks": "Books",
-    "FolderTypeTvShows": "TV",
+    "FolderTypeTvShows": "TV Shows",
     "FolderTypeInherit": "Inherit",
     "LabelContentType": "Content type:",
     "TitleScheduledTasks": "Scheduled Tasks",
@@ -254,7 +254,8 @@
     "HeaderFeatureAccess": "Feature Access",
     "OptionAllowMediaPlayback": "Allow media playback",
     "OptionAllowBrowsingLiveTv": "Allow Live TV access",
-    "HeaderMediaDeletion": "Media Deletion",
+    "AllLibraries": "All libraries",
+    "HeaderAllowMediaDeletionFrom": "Allow Media Deletion From",
     "AllowDeletionFromAll": "Allow media deletion from all libraries",
     "OptionAllowManageLiveTv": "Allow Live TV recording management",
     "OptionAllowRemoteControlOthers": "Allow remote control of other users",
@@ -610,7 +611,7 @@
     "LabelMusicStreamingTranscodingBitrateHelp": "Specify a max bitrate when streaming music",
     "OptionIgnoreTranscodeByteRangeRequests": "Ignore transcode byte range requests",
     "OptionIgnoreTranscodeByteRangeRequestsHelp": "If enabled, these requests will be honored but will ignore the byte range header.",
-    "LabelFriendlyName": "Friendly name",
+    "LabelFriendlyName": "Friendly name:",
     "LabelManufacturer": "Manufacturer",
     "LabelManufacturerUrl": "Manufacturer url",
     "LabelModelName": "Model name",
@@ -1759,5 +1760,8 @@
     "LabelSimultaneousConnectionLimit": "Simultaneous stream limit:",
     "SimultaneousConnectionLimitHelp": "The maximum number of allowed simultaneous streams. Enter 0 for no limit.",
     "LaunchWebAppOnStartup": "Launch the Emby web app in my web browser when Emby Server starts",
-    "LaunchWebAppOnStartupHelp": "This will open the web app in your default web browser when Emby Server initially starts. This will not occur when using the restart server function."
+    "LaunchWebAppOnStartupHelp": "This will open the web app in your default web browser when Emby Server initially starts. This will not occur when using the restart server function.",
+    "LabelUserAgent": "User agent:",
+    "UserAgentHelp": "Supply a custom user-agent http header, if necessary.",
+    "HeaderConfigureRemoteAccess": "Configure Remote Access"
 }

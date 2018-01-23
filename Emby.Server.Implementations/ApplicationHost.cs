@@ -33,7 +33,6 @@ using Emby.Server.Implementations.ScheduledTasks;
 using Emby.Server.Implementations.Security;
 using Emby.Server.Implementations.Serialization;
 using Emby.Server.Implementations.Session;
-using Emby.Server.Implementations.Social;
 using Emby.Server.Implementations.Threading;
 using Emby.Server.Implementations.TV;
 using Emby.Server.Implementations.Updates;
@@ -93,7 +92,6 @@ using MediaBrowser.Model.News;
 using MediaBrowser.Model.Reflection;
 using MediaBrowser.Model.Serialization;
 using MediaBrowser.Model.Services;
-using MediaBrowser.Model.Social;
 using MediaBrowser.Model.System;
 using MediaBrowser.Model.Tasks;
 using MediaBrowser.Model.Text;
@@ -814,16 +812,6 @@ namespace Emby.Server.Implementations
                 LogEnvironmentInfo(Logger, ApplicationPaths, false);
             }
 
-            // Put the app config in the log for troubleshooting purposes
-            var configJson = new StringBuilder(JsonSerializer.SerializeToString(ConfigurationManager.CommonConfiguration));
-
-            if (!string.IsNullOrWhiteSpace(ServerConfigurationManager.Configuration.CertificatePassword))
-            {
-                configJson = configJson.Replace(ServerConfigurationManager.Configuration.CertificatePassword, "####");
-            }
-
-            Logger.LogMultiline("Application configuration:", LogSeverity.Info, configJson);
-
             if (Plugins != null)
             {
                 var pluginBuilder = new StringBuilder();
@@ -1004,7 +992,7 @@ namespace Emby.Server.Implementations
             ChannelManager = new ChannelManager(UserManager, DtoService, LibraryManager, LogManager.GetLogger("ChannelManager"), ServerConfigurationManager, FileSystemManager, UserDataManager, JsonSerializer, LocalizationManager, HttpClient, ProviderManager);
             RegisterSingleInstance(ChannelManager);
 
-            MediaSourceManager = new MediaSourceManager(ItemRepository, UserManager, LibraryManager, LogManager.GetLogger("MediaSourceManager"), JsonSerializer, FileSystemManager, UserDataManager, TimerFactory);
+            MediaSourceManager = new MediaSourceManager(ItemRepository, UserManager, LibraryManager, LogManager.GetLogger("MediaSourceManager"), JsonSerializer, FileSystemManager, UserDataManager, TimerFactory, () => MediaEncoder);
             RegisterSingleInstance(MediaSourceManager);
 
             SessionManager = new SessionManager(UserDataManager, LogManager.GetLogger("SessionManager"), LibraryManager, UserManager, musicManager, DtoService, ImageProcessor, JsonSerializer, this, HttpClient, AuthenticationRepository, DeviceManager, MediaSourceManager, TimerFactory);
@@ -1050,12 +1038,6 @@ namespace Emby.Server.Implementations
 
             EncodingManager = new EncodingManager(FileSystemManager, Logger, MediaEncoder, ChapterManager, LibraryManager);
             RegisterSingleInstance(EncodingManager);
-
-            var sharingRepo = new SharingRepository(LogManager.GetLogger("SharingRepository"), ApplicationPaths, FileSystemManager);
-            sharingRepo.Initialize();
-            // This is only needed for disposal purposes. If removing this, make sure to have the manager handle disposing it
-            RegisterSingleInstance<ISharingRepository>(sharingRepo);
-            RegisterSingleInstance<ISharingManager>(new SharingManager(sharingRepo, ServerConfigurationManager, LibraryManager, this));
 
             var activityLogRepo = GetActivityLogRepository();
             RegisterSingleInstance(activityLogRepo);
@@ -1228,7 +1210,7 @@ namespace Emby.Server.Implementations
                 //localCert.PrivateKey = PrivateKey.CreateFromFile(pvk_file).RSA;
                 if (!localCert.HasPrivateKey)
                 {
-                    //throw new FileNotFoundException("Secure requested, no private key included", certificateLocation);
+                    Logger.Error("No private key included in SSL cert {0}.", certificateLocation);
                     return null;
                 }
 
@@ -1261,7 +1243,7 @@ namespace Emby.Server.Implementations
                 info.FFProbeFilename = "ffprobe";
                 info.ArchiveType = "7z";
                 info.Version = "20170308";
-                info.DownloadUrls = GetLinuxDownloadUrls();
+                info.DownloadUrls = new string[] { };
             }
             else if (EnvironmentInfo.OperatingSystem == MediaBrowser.Model.System.OperatingSystem.Windows)
             {
@@ -1286,29 +1268,6 @@ namespace Emby.Server.Implementations
             }
 
             return info;
-        }
-
-        private string[] GetLinuxDownloadUrls()
-        {
-            Type t = Type.GetType("Mono.Runtime");
-            if (t != null)
-            {
-                switch (EnvironmentInfo.SystemArchitecture)
-                {
-                    case MediaBrowser.Model.System.Architecture.X64:
-                        return new[]
-                        {
-                        "https://embydata.com/downloads/ffmpeg/linux/ffmpeg-git-20170301-64bit-static.7z"
-                    };
-                    case MediaBrowser.Model.System.Architecture.X86:
-                        return new[]
-                        {
-                        "https://embydata.com/downloads/ffmpeg/linux/ffmpeg-git-20170301-32bit-static.7z"
-                    };
-                }
-            }
-
-            return new string[] { };
         }
 
         /// <summary>

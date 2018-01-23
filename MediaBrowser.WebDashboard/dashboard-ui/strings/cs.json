@@ -1,6 +1,4 @@
 {
-    "AllLibraries": "All libraries",
-    "HeaderAllowMediaDeletionFrom": "Allow Media Deletion From",
     "LabelPrevious": "P\u0159edchoz\u00ed",
     "LabelFinish": "Dokon\u010dit",
     "LabelNext": "Dal\u0161\u00ed",
@@ -25,6 +23,8 @@
     "LabelAddConnectSupporterHelp": "Chcete-li p\u0159idat u\u017eivatele, kter\u00fd nen\u00ed uveden v seznamu, budete muset nejprve propojit sv\u016fj \u00fa\u010det Emby Connect ze strany profilu u\u017eivatele.",
     "LabelPinCode": "Pin k\u00f3d:",
     "DeleteMedia": "Odstranit m\u00e9dia",
+    "AllowRemoteAccess": "Allow remote connections to this Emby Server.",
+    "AllowRemoteAccessHelp": "If unchecked, all remote connections will be blocked.",
     "HeaderSync": "Synchronizace",
     "HeaderPlayAll": "P\u0159ehr\u00e1t v\u0161e",
     "HeaderUpcomingNews": "Upcoming News",
@@ -254,7 +254,8 @@
     "HeaderFeatureAccess": "P\u0159\u00edstup k funkc\u00edm",
     "OptionAllowMediaPlayback": "Povolit p\u0159ehr\u00e1v\u00e1n\u00ed m\u00e9di\u00ed",
     "OptionAllowBrowsingLiveTv": "Povolit p\u0159\u00edstup k Live TV",
-    "HeaderMediaDeletion": "Media Deletion",
+    "AllLibraries": "All libraries",
+    "HeaderAllowMediaDeletionFrom": "Allow Media Deletion From",
     "AllowDeletionFromAll": "Allow media deletion from all libraries",
     "OptionAllowManageLiveTv": "Povolit spr\u00e1vu nahr\u00e1v\u00e1n\u00ed z Live TV",
     "OptionAllowRemoteControlOthers": "Povolit vzd\u00e1len\u00e9 ovl\u00e1d\u00e1n\u00ed ostatn\u00edch u\u017eivatel\u016f",
@@ -1759,5 +1760,8 @@
     "LabelSimultaneousConnectionLimit": "Simultaneous stream limit:",
     "SimultaneousConnectionLimitHelp": "The maximum number of allowed simultaneous streams. Enter 0 for no limit.",
     "LaunchWebAppOnStartup": "Launch the Emby web app in my web browser when Emby Server starts",
-    "LaunchWebAppOnStartupHelp": "This will open the web app in your default web browser when Emby Server initially starts. This will not occur when using the restart server function."
+    "LaunchWebAppOnStartupHelp": "This will open the web app in your default web browser when Emby Server initially starts. This will not occur when using the restart server function.",
+    "LabelUserAgent": "User agent:",
+    "UserAgentHelp": "Supply a custom user-agent http header, if necessary.",
+    "HeaderConfigureRemoteAccess": "Configure Remote Access"
 }

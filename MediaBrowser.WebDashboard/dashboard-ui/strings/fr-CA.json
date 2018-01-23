@@ -1,6 +1,4 @@
 {
-    "AllLibraries": "All libraries",
-    "HeaderAllowMediaDeletionFrom": "Allow Media Deletion From",
     "LabelPrevious": "Pr\u00e9c\u00e9dent",
     "LabelFinish": "Terminer",
     "LabelNext": "Suivant",
@@ -25,6 +23,8 @@
     "LabelAddConnectSupporterHelp": "To add a user who isn't listed, you'll need to first link their account to Emby Connect from their user profile page.",
     "LabelPinCode": "Pin code:",
     "DeleteMedia": "Delete media",
+    "AllowRemoteAccess": "Allow remote connections to this Emby Server.",
+    "AllowRemoteAccessHelp": "If unchecked, all remote connections will be blocked.",
     "HeaderSync": "Sync",
     "HeaderPlayAll": "Play All",
     "HeaderUpcomingNews": "Upcoming News",
@@ -65,7 +65,7 @@
     "FolderTypeMusicVideos": "Music videos",
     "FolderTypeGames": "Games",
     "FolderTypeBooks": "Books",
-    "FolderTypeTvShows": "TV",
+    "FolderTypeTvShows": "S\u00e9ries TV",
     "FolderTypeInherit": "Inherit",
     "LabelContentType": "Content type:",
     "TitleScheduledTasks": "Scheduled Tasks",
@@ -254,7 +254,8 @@
     "HeaderFeatureAccess": "Feature Access",
     "OptionAllowMediaPlayback": "Allow media playback",
     "OptionAllowBrowsingLiveTv": "Allow Live TV access",
-    "HeaderMediaDeletion": "Media Deletion",
+    "AllLibraries": "All libraries",
+    "HeaderAllowMediaDeletionFrom": "Allow Media Deletion From",
     "AllowDeletionFromAll": "Allow media deletion from all libraries",
     "OptionAllowManageLiveTv": "Allow Live TV recording management",
     "OptionAllowRemoteControlOthers": "Allow remote control of other users",
@@ -610,7 +611,7 @@
     "LabelMusicStreamingTranscodingBitrateHelp": "Specify a max bitrate when streaming music",
     "OptionIgnoreTranscodeByteRangeRequests": "Ignore transcode byte range requests",
     "OptionIgnoreTranscodeByteRangeRequestsHelp": "If enabled, these requests will be honored but will ignore the byte range header.",
-    "LabelFriendlyName": "Friendly name",
+    "LabelFriendlyName": "Friendly name:",
     "LabelManufacturer": "Manufacturer",
     "LabelManufacturerUrl": "Manufacturer url",
     "LabelModelName": "Model name",
@@ -1759,5 +1760,8 @@
     "LabelSimultaneousConnectionLimit": "Simultaneous stream limit:",
     "SimultaneousConnectionLimitHelp": "The maximum number of allowed simultaneous streams. Enter 0 for no limit.",
     "LaunchWebAppOnStartup": "Launch the Emby web app in my web browser when Emby Server starts",
-    "LaunchWebAppOnStartupHelp": "This will open the web app in your default web browser when Emby Server initially starts. This will not occur when using the restart server function."
+    "LaunchWebAppOnStartupHelp": "This will open the web app in your default web browser when Emby Server initially starts. This will not occur when using the restart server function.",
+    "LabelUserAgent": "User agent:",
+    "UserAgentHelp": "Supply a custom user-agent http header, if necessary.",
+    "HeaderConfigureRemoteAccess": "Configure Remote Access"
 }

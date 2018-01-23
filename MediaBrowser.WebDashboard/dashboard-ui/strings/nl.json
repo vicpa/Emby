@@ -1,6 +1,4 @@
 {
-    "AllLibraries": "All libraries",
-    "HeaderAllowMediaDeletionFrom": "Allow Media Deletion From",
     "LabelPrevious": "Vorige",
     "LabelFinish": "Voltooien",
     "LabelNext": "Volgende",
@@ -25,6 +23,8 @@
     "LabelAddConnectSupporterHelp": "Om een \u200b\u200bgebruiker toe te voegen die niet in de lijst voorkomt, moet u eerst hun account aan Emby Connect koppelen vanuit hun gebruikersprofiel pagina.",
     "LabelPinCode": "Pincode:",
     "DeleteMedia": "Verwijder media",
+    "AllowRemoteAccess": "Allow remote connections to this Emby Server.",
+    "AllowRemoteAccessHelp": "If unchecked, all remote connections will be blocked.",
     "HeaderSync": "Sync",
     "HeaderPlayAll": "Speel alles af",
     "HeaderUpcomingNews": "Aankomende Nieuws",
@@ -254,7 +254,8 @@
     "HeaderFeatureAccess": "Functie toegang",
     "OptionAllowMediaPlayback": "Media afspelen toestaan",
     "OptionAllowBrowsingLiveTv": "Live TV toegang toestaan",
-    "HeaderMediaDeletion": "Media Verwijdering",
+    "AllLibraries": "All libraries",
+    "HeaderAllowMediaDeletionFrom": "Allow Media Deletion From",
     "AllowDeletionFromAll": "Toestaan media te verwijderen uit alle bibliotheken",
     "OptionAllowManageLiveTv": "Live TV opname beheer toestaan",
     "OptionAllowRemoteControlOthers": "Op afstand besturen van andere gebruikers toestaan",
@@ -1759,5 +1760,8 @@
     "LabelSimultaneousConnectionLimit": "Gelijktijdige streams limiet:",
     "SimultaneousConnectionLimitHelp": "Het maximum aantal toegestane gelijktijdige streams. Geef 0 in voor geen limiet.",
     "LaunchWebAppOnStartup": "Launch the Emby web app in my web browser when Emby Server starts",
-    "LaunchWebAppOnStartupHelp": "This will open the web app in your default web browser when Emby Server initially starts. This will not occur when using the restart server function."
+    "LaunchWebAppOnStartupHelp": "This will open the web app in your default web browser when Emby Server initially starts. This will not occur when using the restart server function.",
+    "LabelUserAgent": "User agent:",
+    "UserAgentHelp": "Supply a custom user-agent http header, if necessary.",
+    "HeaderConfigureRemoteAccess": "Configure Remote Access"
 }

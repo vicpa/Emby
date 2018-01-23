@@ -4,6 +4,7 @@ using MediaBrowser.Model.MediaInfo;
 using System.Collections.Generic;
 using MediaBrowser.Model.Serialization;
 using MediaBrowser.Model.Session;
+using System;
 
 namespace MediaBrowser.Model.Dto
 {
@@ -42,11 +43,12 @@ namespace MediaBrowser.Model.Dto
         public bool RequiresOpening { get; set; }
         public string OpenToken { get; set; }
         public bool RequiresClosing { get; set; }
-        public bool SupportsProbing { get; set; }
         public string LiveStreamId { get; set; }
         public int? BufferMs { get; set; }
 
         public bool RequiresLooping { get; set; }
+
+        public bool SupportsProbing { get; set; }
 
         public VideoType? VideoType { get; set; }
 
