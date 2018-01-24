@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Model.Logging;
 using MediaBrowser.Model.Services;
+using System.Linq;
 
 namespace Emby.Server.Implementations.HttpServer
 {
@@ -101,7 +102,7 @@ namespace Emby.Server.Implementations.HttpServer
             var rangeString = string.Format("bytes {0}-{1}/{2}", RangeStart, RangeEnd, TotalContentLength);
             Headers["Content-Range"] = rangeString;
 
-            Logger.Debug("Setting range response values for {0}. RangeRequest: {1} Content-Length: {2}, Content-Range: {3}", Path, RangeHeader, lengthString, rangeString);
+            Logger.Info("Setting range response values for {0}. RangeRequest: {1} Content-Length: {2}, Content-Range: {3}", Path, RangeHeader, lengthString, rangeString);
         }
 
         /// <summary>
@@ -147,6 +148,13 @@ namespace Emby.Server.Implementations.HttpServer
             }
         }
 
+        private string[] SkipLogExtensions = new string[] 
+        {
+            ".js",
+            ".html",
+            ".css"
+        };
+
         public async Task WriteToAsync(IResponse response, CancellationToken cancellationToken)
         {
             try
@@ -157,17 +165,24 @@ namespace Emby.Server.Implementations.HttpServer
                     return;
                 }
 
+                var path = Path;
+
                 if (string.IsNullOrWhiteSpace(RangeHeader) || (RangeStart <= 0 && RangeEnd >= TotalContentLength - 1))
                 {
-                    Logger.Debug("Transmit file {0}", Path);
+                    var extension = System.IO.Path.GetExtension(path);
+
+                    if (extension == null || !SkipLogExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+                    {
+                        Logger.Info("Transmit file {0}", path);
+                    }
 
                     //var count = FileShare == FileShareMode.ReadWrite ? TotalContentLength : 0;
 
-                    await response.TransmitFile(Path, 0, 0, FileShare, cancellationToken).ConfigureAwait(false);
+                    await response.TransmitFile(path, 0, 0, FileShare, cancellationToken).ConfigureAwait(false);
                     return;
                 }
 
-                await response.TransmitFile(Path, RangeStart, RangeLength, FileShare, cancellationToken).ConfigureAwait(false);
+                await response.TransmitFile(path, RangeStart, RangeLength, FileShare, cancellationToken).ConfigureAwait(false);
             }
             finally
             {
