@@ -21,6 +21,8 @@ using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Model.Events;
 using MediaBrowser.Model.Globalization;
 using MediaBrowser.Model.Extensions;
+using System.Net.Http;
+using MediaBrowser.Model.Services;
 
 namespace Emby.Dlna.PlayTo
 {
@@ -364,10 +366,10 @@ namespace Emby.Dlna.PlayTo
                 Playlist.AddRange(playlist);
             }
 
-            if (!String.IsNullOrWhiteSpace(command.ControllingUserId))
+            if (!String.IsNullOrEmpty(command.ControllingUserId))
             {
-                await _sessionManager.LogSessionActivity(_session.Client, _session.ApplicationVersion, _session.DeviceId,
-                        _session.DeviceName, _session.RemoteEndPoint, user).ConfigureAwait(false);
+                _sessionManager.LogSessionActivity(_session.Client, _session.ApplicationVersion, _session.DeviceId,
+                       _session.DeviceName, _session.RemoteEndPoint, user);
             }
 
             await PlayItems(playlist).ConfigureAwait(false);
@@ -435,42 +437,12 @@ namespace Emby.Dlna.PlayTo
             return info.IsDirectStream;
         }
 
-        public Task SendUserDataChangeInfo(UserDataChangeInfo info, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(true);
-        }
-
-        public Task SendRestartRequiredNotification(CancellationToken cancellationToken)
-        {
-            return Task.FromResult(true);
-        }
-
-        public Task SendServerRestartNotification(CancellationToken cancellationToken)
-        {
-            return Task.FromResult(true);
-        }
-
-        public Task SendSessionEndedNotification(SessionInfoDto sessionInfo, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(true);
-        }
-
         public Task SendPlaybackStartNotification(SessionInfoDto sessionInfo, CancellationToken cancellationToken)
         {
             return Task.FromResult(true);
         }
 
         public Task SendPlaybackStoppedNotification(SessionInfoDto sessionInfo, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(true);
-        }
-
-        public Task SendServerShutdownNotification(CancellationToken cancellationToken)
-        {
-            return Task.FromResult(true);
-        }
-
-        public Task SendLibraryUpdateInfo(LibraryUpdateInfo info, CancellationToken cancellationToken)
         {
             return Task.FromResult(true);
         }
@@ -513,7 +485,7 @@ namespace Emby.Dlna.PlayTo
             var playlistItem = GetPlaylistItem(item, mediaSources, profile, _session.DeviceId, mediaSourceId, audioStreamIndex, subtitleStreamIndex);
             playlistItem.StreamInfo.StartPositionTicks = startPostionTicks;
 
-            playlistItem.StreamUrl = playlistItem.StreamInfo.ToDlnaUrl(_serverAddress, _accessToken);
+            playlistItem.StreamUrl = DidlBuilder.NormalizeDlnaMediaUrl(playlistItem.StreamInfo.ToUrl(_serverAddress, _accessToken));
 
             var itemXml = new DidlBuilder(profile, user, _imageProcessor, _serverAddress, _accessToken, _userDataManager, _localization, _mediaSourceManager, _logger, _libraryManager, _mediaEncoder)
                 .GetItemDidl(_config.GetDlnaConfiguration(), item, user, null, _session.DeviceId, new Filter(), playlistItem.StreamInfo);
@@ -880,7 +852,7 @@ namespace Emby.Dlna.PlayTo
 
             private static string GetItemId(string url)
             {
-                if (string.IsNullOrWhiteSpace(url))
+                if (string.IsNullOrEmpty(url))
                 {
                     throw new ArgumentNullException("url");
                 }
@@ -906,7 +878,7 @@ namespace Emby.Dlna.PlayTo
 
             public static StreamParams ParseFromUrl(string url, ILibraryManager libraryManager, IMediaSourceManager mediaSourceManager)
             {
-                if (string.IsNullOrWhiteSpace(url))
+                if (string.IsNullOrEmpty(url))
                 {
                     throw new ArgumentNullException("url");
                 }
@@ -923,57 +895,23 @@ namespace Emby.Dlna.PlayTo
                     return request;
                 }
 
-                const string srch = "params=";
-                var index = url.IndexOf(srch, StringComparison.OrdinalIgnoreCase);
-
+                var index = url.IndexOf('?');
                 if (index == -1) return request;
 
-                var vals = url.Substring(index + srch.Length).Split(';');
+                var query = url.Substring(index + 1);
+                QueryParamCollection values = MyHttpUtility.ParseQueryString(query);
 
-                for (var i = 0; i < vals.Length; i++)
-                {
-                    var val = vals[i];
+                request.DeviceProfileId = values.Get("DeviceProfileId");
+                request.DeviceId = values.Get("DeviceId");
+                request.MediaSourceId = values.Get("MediaSourceId");
+                request.LiveStreamId = values.Get("LiveStreamId");
+                request.IsDirectStream = string.Equals("true", values.Get("Static"), StringComparison.OrdinalIgnoreCase);
 
-                    if (string.IsNullOrWhiteSpace(val))
-                    {
-                        continue;
-                    }
+                request.AudioStreamIndex = GetIntValue(values, "AudioStreamIndex");
+                request.SubtitleStreamIndex = GetIntValue(values, "SubtitleStreamIndex");
+                request.StartPositionTicks = GetLongValue(values, "StartPositionTicks");
 
-                    if (i == 0)
-                    {
-                        request.DeviceProfileId = val;
-                    }
-                    else if (i == 1)
-                    {
-                        request.DeviceId = val;
-                    }
-                    else if (i == 2)
-                    {
-                        request.MediaSourceId = val;
-                    }
-                    else if (i == 3)
-                    {
-                        request.IsDirectStream = string.Equals("true", val, StringComparison.OrdinalIgnoreCase);
-                    }
-                    else if (i == 6)
-                    {
-                        request.AudioStreamIndex = int.Parse(val, CultureInfo.InvariantCulture);
-                    }
-                    else if (i == 7)
-                    {
-                        request.SubtitleStreamIndex = int.Parse(val, CultureInfo.InvariantCulture);
-                    }
-                    else if (i == 14)
-                    {
-                        request.StartPositionTicks = long.Parse(val, CultureInfo.InvariantCulture);
-                    }
-                    else if (i == 22)
-                    {
-                        request.LiveStreamId = val;
-                    }
-                }
-
-                request.Item = string.IsNullOrWhiteSpace(request.ItemId)
+                request.Item = string.IsNullOrEmpty(request.ItemId)
                     ? null
                     : libraryManager.GetItemById(parsedId);
 
@@ -981,6 +919,32 @@ namespace Emby.Dlna.PlayTo
 
                 return request;
             }
+        }
+
+        private static int? GetIntValue(QueryParamCollection values, string name)
+        {
+            var value = values.Get(name);
+
+            int result;
+            if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out result))
+            {
+                return result;
+            }
+
+            return null;
+        }
+
+        private static long GetLongValue(QueryParamCollection values, string name)
+        {
+            var value = values.Get(name);
+
+            long result;
+            if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out result))
+            {
+                return result;
+            }
+
+            return 0;
         }
 
         public Task SendMessage<T>(string name, T data, CancellationToken cancellationToken)

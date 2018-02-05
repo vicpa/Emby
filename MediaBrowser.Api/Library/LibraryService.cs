@@ -574,8 +574,8 @@ namespace MediaBrowser.Api.Library
         public Task<object> Get(GetFile request)
         {
             var item = _libraryManager.GetItemById(request.Id);
-            var locationType = item.LocationType;
-            if (locationType == LocationType.Remote || locationType == LocationType.Virtual)
+
+            if (!item.IsFileProtocol)
             {
                 throw new ArgumentException("This command cannot be used for remote or virtual items.");
             }
@@ -756,9 +756,10 @@ namespace MediaBrowser.Api.Library
                     continue;
                 }
 
-                item.Delete(new DeleteOptions
+                _libraryManager.DeleteItem(item, new DeleteOptions
                 {
                     DeleteFileLocation = true
+
                 }, true);
             }
         }

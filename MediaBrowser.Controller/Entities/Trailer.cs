@@ -47,7 +47,7 @@ namespace MediaBrowser.Controller.Entities
 
             info.IsLocalTrailer = TrailerTypes.Contains(TrailerType.LocalTrailer);
 
-            if (!IsInMixedFolder && LocationType == LocationType.FileSystem)
+            if (!IsInMixedFolder && IsFileProtocol)
             {
                 info.Name = System.IO.Path.GetFileName(ContainingFolderPath);
             }
@@ -96,7 +96,7 @@ namespace MediaBrowser.Controller.Entities
             var list = base.GetRelatedUrls();
 
             var imdbId = this.GetProviderId(MetadataProviders.Imdb);
-            if (!string.IsNullOrWhiteSpace(imdbId))
+            if (!string.IsNullOrEmpty(imdbId))
             {
                 list.Add(new ExternalUrl
                 {

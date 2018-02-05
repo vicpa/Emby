@@ -453,6 +453,7 @@
     "HeaderSource": "Origen",
     "HeaderStatus": "Estat",
     "HeaderDestination": "Dest\u00ed",
+    "Subscriptions": "Subscriptions",
     "HeaderProgram": "Programa",
     "HeaderClients": "Clients",
     "LabelCompleted": "Completat",
@@ -975,8 +976,6 @@
     "TitleSync": "Sync",
     "OptionAllowSyncContent": "Permetre Sync",
     "OptionAllowContentDownloading": "Permetre desc\u00e0rrega de mitjans",
-    "NameSeasonUnknown": "Temporada Desconeguda",
-    "NameSeasonNumber": "Temporada {0}",
     "LabelNewUserNameHelp": "Els noms d'usuari poden contenir lletres (a-z), nombres (0-9), guions (-), guions baixos (_), ap\u00f2strofs (') i punts (.)",
     "TabSyncJobs": "Sync Jobs",
     "HeaderThisUserIsCurrentlyDisabled": "This user is currently disabled",
@@ -1729,7 +1728,7 @@
     "ButtonScanAllLibraries": "Scan All Libraries",
     "ScanLibrary": "Scan library",
     "EnableStreamLooping": "Auto-loop live streams",
-    "EnableStreamLoopingHelp": "Enable this if live streams only contain a few seconds of data and need to be continuously requested.",
+    "EnableStreamLoopingHelp": "Enable this if live streams only contain a few seconds of data and need to be continuously requested. Enabling this when not needed may cause problems.",
     "HttpsRequiresCert": "To require https for external connections, you will need to supply a trusted SSL certificate, such as Lets Encrypt.",
     "HeaderLatestDownloadedVideos": "Darrers V\u00eddeos Descarregats",
     "ServerRestartNeededAfterPluginInstall": "Emby Server will need to be restarted after installing a plugin.",
@@ -1763,5 +1762,8 @@
     "LaunchWebAppOnStartupHelp": "This will open the web app in your default web browser when Emby Server initially starts. This will not occur when using the restart server function.",
     "LabelUserAgent": "User agent:",
     "UserAgentHelp": "Supply a custom user-agent http header, if necessary.",
-    "HeaderConfigureRemoteAccess": "Configure Remote Access"
+    "HeaderConfigureRemoteAccess": "Configure Remote Access",
+    "LearnHowToCreateSynologyShares": "Learn how to share folders in Synology.",
+    "LabelLanNetworks": "LAN networks:",
+    "LanNetworksHelp": "Comma separated list of IP addresses or IP\/netmask entries for networks that will be considered on local network when enforcing bandwidth restrictions. If set, all other IP addresses will be considered to be on the external network and will be subject to the external bandwidth restrictions. If left blank, only the server's subnet is considered to be on the local network."
 }

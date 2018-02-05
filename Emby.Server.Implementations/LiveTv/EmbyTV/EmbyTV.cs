@@ -408,7 +408,6 @@ namespace Emby.Server.Implementations.LiveTv.EmbyTV
                     if (!string.IsNullOrWhiteSpace(epgChannel.ImageUrl))
                     {
                         tunerChannel.ImageUrl = epgChannel.ImageUrl;
-                        tunerChannel.HasImage = true;
                     }
                 }
             }
@@ -597,7 +596,7 @@ namespace Emby.Server.Implementations.LiveTv.EmbyTV
                 {
                     timer.IsManual = true;
                 }
-                
+
                 if (string.IsNullOrWhiteSpace(timer.SeriesTimerId) || isSeriesCancelled)
                 {
                     _timerProvider.Delete(timer);
@@ -1007,11 +1006,11 @@ namespace Emby.Server.Implementations.LiveTv.EmbyTV
             return result.Item1;
         }
 
-        public async Task<Tuple<MediaSourceInfo, IDirectStreamProvider>> GetChannelStreamWithDirectStreamProvider(string channelId, string streamId, CancellationToken cancellationToken)
+        public async Task<Tuple<MediaSourceInfo, ILiveStream>> GetChannelStreamWithDirectStreamProvider(string channelId, string streamId, CancellationToken cancellationToken)
         {
             var result = await GetChannelStreamInternal(channelId, streamId, cancellationToken).ConfigureAwait(false);
 
-            return new Tuple<MediaSourceInfo, IDirectStreamProvider>(result.Item2, result.Item1 as IDirectStreamProvider);
+            return new Tuple<MediaSourceInfo, ILiveStream>(result.Item2, result.Item1);
         }
 
         private MediaSourceInfo CloneMediaSource(MediaSourceInfo mediaSource, bool enableStreamSharing)
@@ -1066,9 +1065,9 @@ namespace Emby.Server.Implementations.LiveTv.EmbyTV
 
         private async Task<Tuple<ILiveStream, MediaSourceInfo>> GetChannelStreamInternal(string channelId, string streamId, CancellationToken cancellationToken)
         {
-            _logger.Info("Streaming Channel " + channelId);
-
             await _liveStreamsSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+            _logger.Info("Streaming Channel " + channelId);
 
             try
             {
@@ -1180,7 +1179,7 @@ namespace Emby.Server.Implementations.LiveTv.EmbyTV
             };
 
             var isAudio = false;
-            await new LiveStreamHelper(_mediaEncoder, _logger, _jsonSerializer, _config.CommonApplicationPaths).AddMediaInfoWithProbe(stream, isAudio, 0, cancellationToken).ConfigureAwait(false);
+            await new LiveStreamHelper(_mediaEncoder, _logger, _jsonSerializer, _config.CommonApplicationPaths).AddMediaInfoWithProbe(stream, isAudio, false, cancellationToken).ConfigureAwait(false);
 
             return new List<MediaSourceInfo>
             {
@@ -1314,7 +1313,8 @@ namespace Emby.Server.Implementations.LiveTv.EmbyTV
                     recordPath = Path.Combine(recordPath, "Series");
                 }
 
-                var folderName = _fileSystem.GetValidFilename(timer.Name).Trim();
+                // trim trailing period from the folder name
+                var folderName = _fileSystem.GetValidFilename(timer.Name).Trim().TrimEnd('.').Trim();
 
                 // Can't use the year here in the folder name because it is the year of the episode, not the series.
                 recordPath = Path.Combine(recordPath, folderName);
@@ -1347,6 +1347,10 @@ namespace Emby.Server.Implementations.LiveTv.EmbyTV
                 {
                     folderName += " (" + timer.ProductionYear.Value.ToString(CultureInfo.InvariantCulture) + ")";
                 }
+
+                // trim trailing period from the folder name
+                folderName = folderName.TrimEnd('.').Trim();
+
                 recordPath = Path.Combine(recordPath, folderName);
             }
             else if (timer.IsKids)
@@ -1361,6 +1365,10 @@ namespace Emby.Server.Implementations.LiveTv.EmbyTV
                 {
                     folderName += " (" + timer.ProductionYear.Value.ToString(CultureInfo.InvariantCulture) + ")";
                 }
+
+                // trim trailing period from the folder name
+                folderName = folderName.TrimEnd('.').Trim();
+
                 recordPath = Path.Combine(recordPath, folderName);
             }
             else if (timer.IsSports)
@@ -1644,7 +1652,7 @@ namespace Emby.Server.Implementations.LiveTv.EmbyTV
                     DtoOptions = new DtoOptions(true)
 
                 }))
-                    .Where(i => i.LocationType == LocationType.FileSystem && _fileSystem.FileExists(i.Path))
+                    .Where(i => i.IsFileProtocol && _fileSystem.FileExists(i.Path))
                     .Skip(seriesTimer.KeepUpTo - 1)
                     .ToList();
 

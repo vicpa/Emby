@@ -430,6 +430,7 @@ namespace Emby.Server.Implementations
             XmlSerializer = new MyXmlSerializer(fileSystem, logManager.GetLogger("XmlSerializer"));
 
             NetworkManager = networkManager;
+            networkManager.LocalSubnetsFn = GetConfiguredLocalSubnets;
             EnvironmentInfo = environmentInfo;
             SystemEvents = systemEvents;
             MemoryStreamFactory = new MemoryStreamProvider();
@@ -456,6 +457,11 @@ namespace Emby.Server.Implementations
             fileSystem.AddShortcutHandler(new MbLinkShortcutHandler(fileSystem));
 
             NetworkManager.NetworkChanged += NetworkManager_NetworkChanged;
+        }
+
+        private string[] GetConfiguredLocalSubnets()
+        {
+            return ServerConfigurationManager.Configuration.LocalNetworkSubnets;
         }
 
         private void NetworkManager_NetworkChanged(object sender, EventArgs e)
@@ -1025,7 +1031,7 @@ namespace Emby.Server.Implementations
             NotificationManager = new NotificationManager(LogManager, UserManager, ServerConfigurationManager);
             RegisterSingleInstance(NotificationManager);
 
-            SubtitleManager = new SubtitleManager(LogManager.GetLogger("SubtitleManager"), FileSystemManager, LibraryMonitor, LibraryManager, MediaSourceManager, ServerConfigurationManager);
+            SubtitleManager = new SubtitleManager(LogManager.GetLogger("SubtitleManager"), FileSystemManager, LibraryMonitor, LibraryManager, MediaSourceManager, ServerConfigurationManager, LocalizationManager);
             RegisterSingleInstance(SubtitleManager);
 
             RegisterSingleInstance<IDeviceDiscovery>(new DeviceDiscovery(LogManager.GetLogger("IDeviceDiscovery"), ServerConfigurationManager, SocketFactory, TimerFactory));
@@ -1862,7 +1868,8 @@ namespace Emby.Server.Implementations
                 "MediaBrowser.Channels.HitboxTV.dll",
                 "MediaBrowser.Channels.HockeyStreams.dll",
                 "MediaBrowser.Plugins.ITV.dll",
-                "MediaBrowser.Plugins.Lastfm.dll"
+                "MediaBrowser.Plugins.Lastfm.dll",
+                "ServerRestart.dll"
             };
 
             return !exclude.Contains(filename ?? string.Empty, StringComparer.OrdinalIgnoreCase);
@@ -2106,7 +2113,7 @@ namespace Emby.Server.Implementations
         {
             get
             {
-                return string.IsNullOrWhiteSpace(ServerConfigurationManager.Configuration.ServerName)
+                return string.IsNullOrEmpty(ServerConfigurationManager.Configuration.ServerName)
                     ? Environment.MachineName
                     : ServerConfigurationManager.Configuration.ServerName;
             }
@@ -2305,7 +2312,7 @@ namespace Emby.Server.Implementations
         /// <returns>The hostname in <paramref name="externalDns"/></returns>
         private static string GetHostnameFromExternalDns(string externalDns)
         {
-            if (string.IsNullOrWhiteSpace(externalDns))
+            if (string.IsNullOrEmpty(externalDns))
             {
                 return "localhost";
             }
@@ -2421,6 +2428,52 @@ namespace Emby.Server.Implementations
                     }
                 }
             }
+        }
+
+        private Dictionary<string, string> _values;
+        public string GetValue(string name)
+        {
+            if (_values == null)
+            {
+                _values = LoadValues();
+            }
+
+            string value;
+
+            if (_values.TryGetValue(name, out value))
+            {
+                return value;
+            }
+
+            return null;
+        }
+
+        private Dictionary<string, string> LoadValues()
+        {
+            Dictionary<string, string> values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            using (var stream = typeof(ApplicationHost).Assembly.GetManifestResourceStream(typeof(ApplicationHost).Namespace + ".values.txt"))
+            {
+                using (var reader = new StreamReader(stream))
+                {
+                    while (!reader.EndOfStream)
+                    {
+                        var line = reader.ReadLine();
+                        if (string.IsNullOrEmpty(line))
+                        {
+                            continue;
+                        }
+
+                        var index = line.IndexOf('=');
+                        if (index != -1)
+                        {
+                            values[line.Substring(0, index)] = line.Substring(index + 1);
+                        }
+                    }
+                }
+            }
+
+            return values;
         }
     }
 

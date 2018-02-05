@@ -453,6 +453,7 @@
     "HeaderSource": "Fuente",
     "HeaderStatus": "Estado",
     "HeaderDestination": "Destino",
+    "Subscriptions": "Subscriptions",
     "HeaderProgram": "Programa",
     "HeaderClients": "Clientes",
     "LabelCompleted": "Completado",
@@ -975,8 +976,6 @@
     "TitleSync": "Sincronizar",
     "OptionAllowSyncContent": "Permitir Sincronizar",
     "OptionAllowContentDownloading": "Permitir descarga de medios",
-    "NameSeasonUnknown": "Temporada Desconocida",
-    "NameSeasonNumber": "Temporada {0}",
     "LabelNewUserNameHelp": "Los nombres de usuario pueden contener letras (a-z), n\u00fameros (0-9), guiones (-), guiones bajos (_) y puntos (.)",
     "TabSyncJobs": "Trabajos de Sincronizacion",
     "HeaderThisUserIsCurrentlyDisabled": "Este usuario se encuentra actualmente deshabilitado",
@@ -1763,5 +1762,8 @@
     "LaunchWebAppOnStartupHelp": "Esto abrir\u00e1 tu navegador web predeterminado cuando el Servidor Emby se inicie. Esto no ocurrir\u00e1 cuando se use la opci\u00f3n de reiniciar servidor.",
     "LabelUserAgent": "Agente de usuario:",
     "UserAgentHelp": "Suministre un agente de encabezado http personalizado, si fuera necesario.",
-    "HeaderConfigureRemoteAccess": "Configurar Acceso Remoto"
+    "HeaderConfigureRemoteAccess": "Configurar Acceso Remoto",
+    "LearnHowToCreateSynologyShares": "Aprenda como compartir carpetas en Synology.",
+    "LabelLanNetworks": "Redes LAN:",
+    "LanNetworksHelp": "Lista separada por comas de direcciones IP\/mascaras de subred para las redes que ser\u00e1n consideradas como locales al enforzar restricciones de ancho de banda. Si se establece, todas las dem\u00e1s direcciones IP ser\u00e1n consideradas como redes externas y estar\u00e1n sujetas a restricciones de ancho de banda. Si se deja en blanco, s\u00f3lo la subred del servidor ser\u00e1 considerada como red local."
 }

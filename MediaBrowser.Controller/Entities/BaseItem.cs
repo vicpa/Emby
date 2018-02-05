@@ -34,6 +34,7 @@ using MediaBrowser.Model.LiveTv;
 using MediaBrowser.Model.Providers;
 using MediaBrowser.Model.Querying;
 using MediaBrowser.Model.Serialization;
+using MediaBrowser.Model.MediaInfo;
 
 namespace MediaBrowser.Controller.Entities
 {
@@ -260,7 +261,7 @@ namespace MediaBrowser.Controller.Entities
         {
             get
             {
-                if (!string.IsNullOrWhiteSpace(ChannelId))
+                if (!string.IsNullOrEmpty(ChannelId))
                 {
                     return SourceType.Channel;
                 }
@@ -334,7 +335,7 @@ namespace MediaBrowser.Controller.Entities
                 // Local trailer, special feature, theme video, etc.
                 // An item that belongs to another item but is not part of the Parent-Child tree
                 // This is a hack for now relying on ExtraType. Eventually we may need to persist this
-                if (ParentId == Guid.Empty && !IsFolder && LocationType == LocationType.FileSystem)
+                if (ParentId == Guid.Empty && !IsFolder && IsFileProtocol)
                 {
                     return true;
                 }
@@ -363,7 +364,8 @@ namespace MediaBrowser.Controller.Entities
                 //    return LocationType.Offline;
                 //}
 
-                if (string.IsNullOrWhiteSpace(Path))
+                var path = Path;
+                if (string.IsNullOrEmpty(path))
                 {
                     if (SourceType == SourceType.Channel)
                     {
@@ -373,7 +375,61 @@ namespace MediaBrowser.Controller.Entities
                     return LocationType.Virtual;
                 }
 
-                return FileSystem.IsPathFile(Path) ? LocationType.FileSystem : LocationType.Remote;
+                return FileSystem.IsPathFile(path) ? LocationType.FileSystem : LocationType.Remote;
+            }
+        }
+
+        [IgnoreDataMember]
+        public MediaProtocol? PathProtocol
+        {
+            get
+            {
+                var path = Path;
+                
+                if (string.IsNullOrEmpty(path))
+                {
+                    return null;
+                }
+
+                if (path.StartsWith("Rtsp", StringComparison.OrdinalIgnoreCase))
+                {
+                    return MediaProtocol.Rtsp;
+                }
+                if (path.StartsWith("Rtmp", StringComparison.OrdinalIgnoreCase))
+                {
+                    return MediaProtocol.Rtmp;
+                }
+                if (path.StartsWith("Http", StringComparison.OrdinalIgnoreCase))
+                {
+                    return MediaProtocol.Http;
+                }
+
+                return FileSystem.IsPathFile(path) ? MediaProtocol.File : MediaProtocol.Http;
+            }
+        }
+
+        public bool IsPathProtocol(MediaProtocol protocol)
+        {
+            var current = PathProtocol;
+
+            return current.HasValue && current.Value == protocol;
+        }
+
+        [IgnoreDataMember]
+        public bool IsFileProtocol
+        {
+            get
+            {
+                return IsPathProtocol(MediaProtocol.File);
+            }
+        }
+
+        [IgnoreDataMember]
+        public bool HasPathProtocol
+        {
+            get
+            {
+                return PathProtocol.HasValue;
             }
         }
 
@@ -387,9 +443,7 @@ namespace MediaBrowser.Controller.Entities
                     return false;
                 }
 
-                var locationType = LocationType;
-
-                return locationType != LocationType.Remote && locationType != LocationType.Virtual;
+                return IsFileProtocol;
             }
         }
 
@@ -398,7 +452,7 @@ namespace MediaBrowser.Controller.Entities
         {
             get
             {
-                if (LocationType == LocationType.FileSystem)
+                if (IsFileProtocol)
                 {
                     return System.IO.Path.GetFileNameWithoutExtension(Path);
                 }
@@ -469,12 +523,10 @@ namespace MediaBrowser.Controller.Entities
         {
             if (SourceType == SourceType.Channel)
             {
-                return false;
+                return ChannelManager.CanDelete(this);
             }
 
-            var locationType = LocationType;
-            return locationType != LocationType.Remote &&
-                   locationType != LocationType.Virtual;
+            return IsFileProtocol;
         }
 
         public virtual bool IsAuthorizedToDelete(User user, List<Folder> allCollectionFolders)
@@ -544,12 +596,6 @@ namespace MediaBrowser.Controller.Entities
         [IgnoreDataMember]
         public DateTime DateLastRefreshed { get; set; }
 
-        [IgnoreDataMember]
-        public virtual bool EnableRefreshOnDateModifiedChange
-        {
-            get { return false; }
-        }
-
         /// <summary>
         /// The logger
         /// </summary>
@@ -605,9 +651,7 @@ namespace MediaBrowser.Controller.Entities
         {
             get
             {
-                var locationType = LocationType;
-
-                if (locationType == LocationType.Remote || locationType == LocationType.Virtual)
+                if (!IsFileProtocol)
                 {
                     return new string[] { };
                 }
@@ -640,7 +684,7 @@ namespace MediaBrowser.Controller.Entities
             {
                 if (_sortName == null)
                 {
-                    if (!string.IsNullOrWhiteSpace(ForcedSortName))
+                    if (!string.IsNullOrEmpty(ForcedSortName))
                     {
                         // Need the ToLower because that's what CreateSortName does
                         _sortName = ModifySortChunks(ForcedSortName).ToLower();
@@ -747,6 +791,20 @@ namespace MediaBrowser.Controller.Entities
             }
             //Logger.Debug("ModifySortChunks Start: {0} End: {1}", name, builder.ToString());
             return builder.ToString().RemoveDiacritics();
+        }
+
+        [IgnoreDataMember]
+        public bool EnableMediaSourceDisplay
+        {
+            get
+            {
+                if (SourceType == SourceType.Channel)
+                {
+                    return ChannelManager.EnableMediaSourceDisplay(this);
+                }
+
+                return true;
+            }
         }
 
         [IgnoreDataMember]
@@ -960,7 +1018,7 @@ namespace MediaBrowser.Controller.Entities
             get
             {
                 var officialRating = OfficialRating;
-                if (!string.IsNullOrWhiteSpace(officialRating))
+                if (!string.IsNullOrEmpty(officialRating))
                 {
                     return officialRating;
                 }
@@ -981,7 +1039,7 @@ namespace MediaBrowser.Controller.Entities
             get
             {
                 var customRating = CustomRating;
-                if (!string.IsNullOrWhiteSpace(customRating))
+                if (!string.IsNullOrEmpty(customRating))
                 {
                     return customRating;
                 }
@@ -1113,15 +1171,13 @@ namespace MediaBrowser.Controller.Entities
         {
             TriggerOnRefreshStart();
 
-            var locationType = LocationType;
-
             var requiresSave = false;
 
             if (SupportsOwnedItems)
             {
                 try
                 {
-                    var files = locationType != LocationType.Remote && locationType != LocationType.Virtual ?
+                    var files = IsFileProtocol ?
                         GetFileSystemChildren(options.DirectoryService).ToList() :
                         new List<FileSystemMetadata>();
 
@@ -1189,7 +1245,7 @@ namespace MediaBrowser.Controller.Entities
 
             var localTrailersChanged = false;
 
-            if (LocationType == LocationType.FileSystem && GetParent() != null)
+            if (IsFileProtocol && GetParent() != null)
             {
                 if (SupportsThemeMedia)
                 {
@@ -1366,7 +1422,7 @@ namespace MediaBrowser.Controller.Entities
 
             if (SourceType == SourceType.Channel)
             {
-                if (!string.IsNullOrWhiteSpace(ExternalId))
+                if (!string.IsNullOrEmpty(ExternalId))
                 {
                     list.Add(ExternalId);
                 }
@@ -1402,26 +1458,26 @@ namespace MediaBrowser.Controller.Entities
         {
             string lang = PreferredMetadataLanguage;
 
-            if (string.IsNullOrWhiteSpace(lang))
+            if (string.IsNullOrEmpty(lang))
             {
                 lang = GetParents()
                     .Select(i => i.PreferredMetadataLanguage)
-                    .FirstOrDefault(i => !string.IsNullOrWhiteSpace(i));
+                    .FirstOrDefault(i => !string.IsNullOrEmpty(i));
             }
 
-            if (string.IsNullOrWhiteSpace(lang))
+            if (string.IsNullOrEmpty(lang))
             {
                 lang = LibraryManager.GetCollectionFolders(this)
                     .Select(i => i.PreferredMetadataLanguage)
-                    .FirstOrDefault(i => !string.IsNullOrWhiteSpace(i));
+                    .FirstOrDefault(i => !string.IsNullOrEmpty(i));
             }
 
-            if (string.IsNullOrWhiteSpace(lang))
+            if (string.IsNullOrEmpty(lang))
             {
                 lang = LibraryManager.GetLibraryOptions(this).PreferredMetadataLanguage;
             }
 
-            if (string.IsNullOrWhiteSpace(lang))
+            if (string.IsNullOrEmpty(lang))
             {
                 lang = ConfigurationManager.Configuration.PreferredMetadataLanguage;
             }
@@ -1437,26 +1493,26 @@ namespace MediaBrowser.Controller.Entities
         {
             string lang = PreferredMetadataCountryCode;
 
-            if (string.IsNullOrWhiteSpace(lang))
+            if (string.IsNullOrEmpty(lang))
             {
                 lang = GetParents()
                     .Select(i => i.PreferredMetadataCountryCode)
-                    .FirstOrDefault(i => !string.IsNullOrWhiteSpace(i));
+                    .FirstOrDefault(i => !string.IsNullOrEmpty(i));
             }
 
-            if (string.IsNullOrWhiteSpace(lang))
+            if (string.IsNullOrEmpty(lang))
             {
                 lang = LibraryManager.GetCollectionFolders(this)
                     .Select(i => i.PreferredMetadataCountryCode)
-                    .FirstOrDefault(i => !string.IsNullOrWhiteSpace(i));
+                    .FirstOrDefault(i => !string.IsNullOrEmpty(i));
             }
 
-            if (string.IsNullOrWhiteSpace(lang))
+            if (string.IsNullOrEmpty(lang))
             {
                 lang = LibraryManager.GetLibraryOptions(this).MetadataCountryCode;
             }
 
-            if (string.IsNullOrWhiteSpace(lang))
+            if (string.IsNullOrEmpty(lang))
             {
                 lang = ConfigurationManager.Configuration.MetadataCountryCode;
             }
@@ -1503,12 +1559,12 @@ namespace MediaBrowser.Controller.Entities
 
             var rating = CustomRatingForComparison;
 
-            if (string.IsNullOrWhiteSpace(rating))
+            if (string.IsNullOrEmpty(rating))
             {
                 rating = OfficialRatingForComparison;
             }
 
-            if (string.IsNullOrWhiteSpace(rating))
+            if (string.IsNullOrEmpty(rating))
             {
                 return !GetBlockUnratedValue(user.Policy);
             }
@@ -1535,12 +1591,12 @@ namespace MediaBrowser.Controller.Entities
         {
             var rating = CustomRating;
 
-            if (string.IsNullOrWhiteSpace(rating))
+            if (string.IsNullOrEmpty(rating))
             {
                 rating = OfficialRating;
             }
 
-            if (string.IsNullOrWhiteSpace(rating))
+            if (string.IsNullOrEmpty(rating))
             {
                 return null;
             }
@@ -1552,12 +1608,12 @@ namespace MediaBrowser.Controller.Entities
         {
             var rating = CustomRatingForComparison;
 
-            if (string.IsNullOrWhiteSpace(rating))
+            if (string.IsNullOrEmpty(rating))
             {
                 rating = OfficialRatingForComparison;
             }
 
-            if (string.IsNullOrWhiteSpace(rating))
+            if (string.IsNullOrEmpty(rating))
             {
                 return null;
             }
@@ -1674,7 +1730,7 @@ namespace MediaBrowser.Controller.Entities
             {
                 var topParent = GetParents().LastOrDefault() ?? this;
 
-                if (string.IsNullOrWhiteSpace(topParent.Path))
+                if (string.IsNullOrEmpty(topParent.Path))
                 {
                     return true;
                 }
@@ -1768,7 +1824,7 @@ namespace MediaBrowser.Controller.Entities
 
         private BaseItem FindLinkedChild(LinkedChild info)
         {
-            if (!string.IsNullOrWhiteSpace(info.Path))
+            if (!string.IsNullOrEmpty(info.Path))
             {
                 var itemByPath = LibraryManager.FindByPath(info.Path, null);
 
@@ -1780,7 +1836,7 @@ namespace MediaBrowser.Controller.Entities
                 return itemByPath;
             }
 
-            if (!string.IsNullOrWhiteSpace(info.LibraryItemId))
+            if (!string.IsNullOrEmpty(info.LibraryItemId))
             {
                 var item = LibraryManager.GetItemById(info.LibraryItemId);
 
@@ -1811,7 +1867,7 @@ namespace MediaBrowser.Controller.Entities
         /// <exception cref="System.ArgumentNullException"></exception>
         public void AddStudio(string name)
         {
-            if (string.IsNullOrWhiteSpace(name))
+            if (string.IsNullOrEmpty(name))
             {
                 throw new ArgumentNullException("name");
             }
@@ -1845,7 +1901,7 @@ namespace MediaBrowser.Controller.Entities
         /// <exception cref="System.ArgumentNullException"></exception>
         public void AddGenre(string name)
         {
-            if (string.IsNullOrWhiteSpace(name))
+            if (string.IsNullOrEmpty(name))
             {
                 throw new ArgumentNullException("name");
             }
@@ -2102,7 +2158,7 @@ namespace MediaBrowser.Controller.Entities
 
                 var path = chapter.ImagePath;
 
-                if (string.IsNullOrWhiteSpace(path))
+                if (string.IsNullOrEmpty(path))
                 {
                     return null;
                 }
@@ -2370,9 +2426,9 @@ namespace MediaBrowser.Controller.Entities
             return hasChanges;
         }
 
-        protected static string GetMappedPath(BaseItem item, string path, LocationType locationType)
+        protected static string GetMappedPath(BaseItem item, string path, MediaProtocol? protocol)
         {
-            if (locationType == LocationType.FileSystem || locationType == LocationType.Offline)
+            if (protocol.HasValue && protocol.Value == MediaProtocol.File)
             {
                 return LibraryManager.GetPathAfterNetworkSubstitution(path, item);
             }
@@ -2576,16 +2632,6 @@ namespace MediaBrowser.Controller.Entities
         public virtual IEnumerable<Guid> GetIdsForAncestorQuery()
         {
             return new[] { Id };
-        }
-
-        public virtual void Delete(DeleteOptions options)
-        {
-            Delete(options, false);
-        }
-
-        public virtual void Delete(DeleteOptions options, bool notifyParentItem)
-        {
-            LibraryManager.DeleteItem(this, options, notifyParentItem);
         }
 
         public virtual List<ExternalUrl> GetRelatedUrls()

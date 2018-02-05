@@ -42,13 +42,6 @@ namespace MediaBrowser.Controller.LiveTv
         /// <summary>
         /// Deletes the recording.
         /// </summary>
-        /// <param name="id">The identifier.</param>
-        /// <returns>Task.</returns>
-        Task DeleteRecording(string id);
-
-        /// <summary>
-        /// Deletes the recording.
-        /// </summary>
         /// <param name="recording">The recording.</param>
         /// <returns>Task.</returns>
         Task DeleteRecording(BaseItem recording);
@@ -125,14 +118,6 @@ namespace MediaBrowser.Controller.LiveTv
         LiveTvChannel GetInternalChannel(string id);
 
         /// <summary>
-        /// Gets the recording.
-        /// </summary>
-        /// <param name="id">The identifier.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>LiveTvRecording.</returns>
-        Task<BaseItem> GetInternalRecording(string id, CancellationToken cancellationToken);
-
-        /// <summary>
         /// Gets the recording stream.
         /// </summary>
         /// <param name="id">The identifier.</param>
@@ -147,7 +132,7 @@ namespace MediaBrowser.Controller.LiveTv
         /// <param name="mediaSourceId">The media source identifier.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>Task{StreamResponseInfo}.</returns>
-        Task<Tuple<MediaSourceInfo, IDirectStreamProvider>> GetChannelStream(string id, string mediaSourceId, CancellationToken cancellationToken);
+        Task<Tuple<MediaSourceInfo, ILiveStream>> GetChannelStream(string id, string mediaSourceId, CancellationToken cancellationToken);
 
         /// <summary>
         /// Gets the program.
@@ -272,11 +257,6 @@ namespace MediaBrowser.Controller.LiveTv
         /// Gets the internal channels.
         /// </summary>
         QueryResult<BaseItem> GetInternalChannels(LiveTvChannelQuery query, DtoOptions dtoOptions, CancellationToken cancellationToken);
-
-        /// <summary>
-        /// Gets the internal recordings.
-        /// </summary>
-        Task<QueryResult<BaseItem>> GetInternalRecordings(RecordingQuery query, DtoOptions options, CancellationToken cancellationToken);
 
         /// <summary>
         /// Gets the recording media sources.

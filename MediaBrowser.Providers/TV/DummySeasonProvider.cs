@@ -179,9 +179,9 @@ namespace MediaBrowser.Providers.TV
 
             foreach (var seasonToRemove in seasonsToRemove)
             {
-                _logger.Info("Removing virtual season {0} {1}", seasonToRemove.Series.Name, seasonToRemove.IndexNumber);
+                _logger.Info("Removing virtual season {0} {1}", series.Name, seasonToRemove.IndexNumber);
 
-                seasonToRemove.Delete(new DeleteOptions
+                _libraryManager.DeleteItem(seasonToRemove, new DeleteOptions
                 {
                     DeleteFileLocation = true
 

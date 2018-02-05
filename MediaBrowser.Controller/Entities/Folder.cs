@@ -151,7 +151,7 @@ namespace MediaBrowser.Controller.Entities
         {
             get
             {
-                if (LocationType == LocationType.FileSystem)
+                if (IsFileProtocol)
                 {
                     return System.IO.Path.GetFileName(Path);
                 }
@@ -359,8 +359,6 @@ namespace MediaBrowser.Controller.Entities
 
         private async Task ValidateChildrenInternal2(IProgress<double> progress, CancellationToken cancellationToken, bool recursive, bool refreshChildMetadata, MetadataRefreshOptions refreshOptions, IDirectoryService directoryService)
         {
-            var locationType = LocationType;
-
             cancellationToken.ThrowIfCancellationRequested();
 
             var validChildren = new List<BaseItem>();
@@ -371,7 +369,7 @@ namespace MediaBrowser.Controller.Entities
               .SelectMany(i => i.Locations)
               .ToList();
 
-            if (locationType != LocationType.Remote && locationType != LocationType.Virtual)
+            if (IsFileProtocol)
             {
                 IEnumerable<BaseItem> nonCachedChildren;
 
@@ -433,9 +431,7 @@ namespace MediaBrowser.Controller.Entities
 
                     foreach (var item in itemsRemoved)
                     {
-                        var itemLocationType = item.LocationType;
-                        if (itemLocationType == LocationType.Virtual ||
-                            itemLocationType == LocationType.Remote)
+                        if (!item.IsFileProtocol)
                         {
                         }
 
@@ -660,7 +656,7 @@ namespace MediaBrowser.Controller.Entities
             var originalPath = path;
 
             // Depending on whether the path is local or unc, it may return either null or '\' at the top
-            while (!string.IsNullOrWhiteSpace(path) && path.Length > 1)
+            while (!string.IsNullOrEmpty(path) && path.Length > 1)
             {
                 if (FileSystem.DirectoryExists(path))
                 {
@@ -913,7 +909,7 @@ namespace MediaBrowser.Controller.Entities
                 return true;
             }
 
-            if (!string.IsNullOrWhiteSpace(query.AdjacentTo))
+            if (!string.IsNullOrEmpty(query.AdjacentTo))
             {
                 Logger.Debug("Query requires post-filtering due to AdjacentTo");
                 return true;
@@ -1021,15 +1017,11 @@ namespace MediaBrowser.Controller.Entities
 
             if (query.User == null)
             {
-                items = query.Recursive
-                   ? GetRecursiveChildren(filter)
-                   : Children.Where(filter);
+                items = Children.Where(filter);
             }
             else
             {
-                items = query.Recursive
-                   ? GetRecursiveChildren(user, query)
-                   : GetChildren(user, true).Where(filter);
+                items = GetChildren(user, true).Where(filter);
             }
 
             return PostFilterAndSort(items, query, true, true);
@@ -1037,7 +1029,20 @@ namespace MediaBrowser.Controller.Entities
 
         protected QueryResult<BaseItem> PostFilterAndSort(IEnumerable<BaseItem> items, InternalItemsQuery query, bool collapseBoxSetItems, bool enableSorting)
         {
-            return UserViewBuilder.PostFilterAndSort(items, this, null, query, LibraryManager, ConfigurationManager, collapseBoxSetItems, enableSorting);
+            var user = query.User;
+
+            if (collapseBoxSetItems && user != null)
+            {
+                items = UserViewBuilder.CollapseBoxSetItemsIfNeeded(items, query, this, user, ConfigurationManager);
+            }
+
+            // This must be the last filter
+            if (!string.IsNullOrEmpty(query.AdjacentTo))
+            {
+                items = UserViewBuilder.FilterForAdjacency(items.ToList(), query.AdjacentTo);
+            }
+
+            return UserViewBuilder.SortAndPage(items, null, query, LibraryManager, enableSorting);
         }
 
         public virtual List<BaseItem> GetChildren(User user, bool includeLinkedChildren)
@@ -1254,15 +1259,15 @@ namespace MediaBrowser.Controller.Entities
 
                 if (childOwner != null && !(child is IItemByName))
                 {
-                    var childLocationType = childOwner.LocationType;
-                    if (childLocationType == LocationType.Remote || childLocationType == LocationType.Virtual)
+                    var childProtocol = childOwner.PathProtocol;
+                    if (!childProtocol.HasValue || childProtocol.Value != Model.MediaInfo.MediaProtocol.File)
                     {
                         if (!childOwner.IsVisibleStandalone(user))
                         {
                             continue;
                         }
                     }
-                    else if (childLocationType == LocationType.FileSystem)
+                    else
                     {
                         var itemCollectionFolderIds =
                             LibraryManager.GetCollectionFolders(childOwner, allUserRootChildren).Select(f => f.Id);
@@ -1304,7 +1309,7 @@ namespace MediaBrowser.Controller.Entities
         {
             var changesFound = false;
 
-            if (LocationType == LocationType.FileSystem)
+            if (IsFileProtocol)
             {
                 if (RefreshLinkedChildren(fileSystemChildren))
                 {

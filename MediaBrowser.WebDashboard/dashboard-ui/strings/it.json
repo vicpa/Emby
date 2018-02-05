@@ -453,6 +453,7 @@
     "HeaderSource": "Sorgente",
     "HeaderStatus": "Stato",
     "HeaderDestination": "Destinazione",
+    "Subscriptions": "Subscriptions",
     "HeaderProgram": "Programma",
     "HeaderClients": "Dispositivi",
     "LabelCompleted": "Completato",
@@ -975,8 +976,6 @@
     "TitleSync": "Sincronizza",
     "OptionAllowSyncContent": "Consenti Sync",
     "OptionAllowContentDownloading": "Consenti media download",
-    "NameSeasonUnknown": "Stagione sconosciuto",
-    "NameSeasonNumber": "Stagione {0}",
     "LabelNewUserNameHelp": "I nomi utente possono contenere lettere (az), numeri (0-9), trattini (-), underscore (_), apostrofi ('), e periodi (.)",
     "TabSyncJobs": "Attiv. di Sinc.",
     "HeaderThisUserIsCurrentlyDisabled": "Questo utente \u00e8 al momento disabilitato",
@@ -1763,5 +1762,8 @@
     "LaunchWebAppOnStartupHelp": "Ci\u00f2 aprir\u00e0 l'app Web nel browser Web predefinito all'avvio iniziale di Emby Server. Ci\u00f2 non si verifica quando si utilizza la funzione del server di riavvio.",
     "LabelUserAgent": "Agente utente:",
     "UserAgentHelp": "Fornire un'intestazione http personalizzata per utente-agente, se necessario.",
-    "HeaderConfigureRemoteAccess": "Configura Accesso Remoto"
+    "HeaderConfigureRemoteAccess": "Configura Accesso Remoto",
+    "LearnHowToCreateSynologyShares": "Learn how to share folders in Synology.",
+    "LabelLanNetworks": "LAN networks:",
+    "LanNetworksHelp": "Comma separated list of IP addresses or IP\/netmask entries for networks that will be considered on local network when enforcing bandwidth restrictions. If set, all other IP addresses will be considered to be on the external network and will be subject to the external bandwidth restrictions. If left blank, only the server's subnet is considered to be on the local network."
 }

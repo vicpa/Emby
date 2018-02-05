@@ -32,6 +32,11 @@ namespace MediaBrowser.Controller.Channels
         /// <returns>IEnumerable{ChannelFeatures}.</returns>
         ChannelFeatures[] GetAllChannelFeatures();
 
+        bool EnableMediaSourceDisplay(BaseItem item);
+        bool CanDelete(BaseItem item);
+
+        Task DeleteItem(BaseItem item);
+
         /// <summary>
         /// Gets the channel.
         /// </summary>
@@ -54,22 +59,6 @@ namespace MediaBrowser.Controller.Channels
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>Task{QueryResult{BaseItemDto}}.</returns>
         Task<QueryResult<BaseItemDto>> GetChannels(ChannelQuery query, CancellationToken cancellationToken);
-
-        /// <summary>
-        /// Gets all media internal.
-        /// </summary>
-        /// <param name="query">The query.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>Task&lt;QueryResult&lt;BaseItem&gt;&gt;.</returns>
-        Task<QueryResult<BaseItem>> GetAllMediaInternal(AllChannelMediaQuery query, CancellationToken cancellationToken);
-        
-        /// <summary>
-        /// Gets all media.
-        /// </summary>
-        /// <param name="query">The query.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>Task{QueryResult{BaseItemDto}}.</returns>
-        Task<QueryResult<BaseItemDto>> GetAllMedia(AllChannelMediaQuery query, CancellationToken cancellationToken);
 
         /// <summary>
         /// Gets the latest media.
@@ -111,19 +100,5 @@ namespace MediaBrowser.Controller.Channels
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>Task{IEnumerable{MediaSourceInfo}}.</returns>
         IEnumerable<MediaSourceInfo> GetStaticMediaSources(BaseItem item, CancellationToken cancellationToken);
-
-        /// <summary>
-        /// Gets the channel folder.
-        /// </summary>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>BaseItemDto.</returns>
-        Folder GetInternalChannelFolder(CancellationToken cancellationToken);
-
-        /// <summary>
-        /// Gets the channel folder.
-        /// </summary>
-        /// <param name="userId">The user identifier.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        BaseItemDto GetChannelFolder(string userId, CancellationToken cancellationToken);
     }
 }
