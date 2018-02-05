@@ -29,7 +29,7 @@ $7zaOptions = "a -mx9"
 $WindowsBinReleasePath = "$PSScriptRoot\..\..\MediaBrowser.ServerApplication\bin\Release"
 
 Write-Host "Building Windows version..."
-$buildSucceeded = Invoke-MsBuild -Path "$PSScriptRoot\..\..\MediaBrowser.sln" -MsBuildParameters "/target:Clean;Build /property:Configuration=Release;Platform=""Any CPU"" /verbosity:Quiet" -BuildLogDirectoryPath "$PSScriptRoot" 
+$buildSucceeded = Invoke-MsBuild -Path "$PSScriptRoot\..\..\MediaBrowser.sln" -MsBuildParameters "/target:Clean;Build /property:Configuration=Release;Platform=""x64"" /verbosity:Quiet" -BuildLogDirectoryPath "$PSScriptRoot" 
 
 if ($buildSucceeded)
 {
