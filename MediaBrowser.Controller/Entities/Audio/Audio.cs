@@ -29,7 +29,7 @@ namespace MediaBrowser.Controller.Entities.Audio
         /// </summary>
         /// <value>The artist.</value>
         [IgnoreDataMember]
-        public List<string> Artists { get; set; }
+        public string[] Artists { get; set; }
 
         [IgnoreDataMember]
         public string[] AlbumArtists { get; set; }
@@ -42,7 +42,7 @@ namespace MediaBrowser.Controller.Entities.Audio
 
         public Audio()
         {
-            Artists = new List<string>();
+            Artists = EmptyStringArray;
             AlbumArtists = EmptyStringArray;
         }
 
@@ -58,6 +58,12 @@ namespace MediaBrowser.Controller.Entities.Audio
             {
                 return true;
             }
+        }
+
+        [IgnoreDataMember]
+        public override bool SupportsPeople
+        {
+            get { return false; }
         }
 
         [IgnoreDataMember]
@@ -98,13 +104,23 @@ namespace MediaBrowser.Controller.Entities.Audio
         }
 
         [IgnoreDataMember]
-        public List<string> AllArtists
+        public string[] AllArtists
         {
             get
             {
-                var list = AlbumArtists.ToList();
+                var list = new string[AlbumArtists.Length + Artists.Length];
 
-                list.AddRange(Artists);
+                var index = 0;
+                foreach (var artist in AlbumArtists)
+                {
+                    list[index] = artist;
+                    index++;
+                }
+                foreach (var artist in Artists)
+                {
+                    list[index] = artist;
+                    index++;
+                }
 
                 return list;
 
@@ -144,45 +160,27 @@ namespace MediaBrowser.Controller.Entities.Audio
         {
             var list = base.GetUserDataKeys();
 
-            if (ConfigurationManager.Configuration.EnableStandaloneMusicKeys)
+            var songKey = IndexNumber.HasValue ? IndexNumber.Value.ToString("0000") : string.Empty;
+
+
+            if (ParentIndexNumber.HasValue)
             {
-                var songKey = IndexNumber.HasValue ? IndexNumber.Value.ToString("0000") : string.Empty;
-
-
-                if (ParentIndexNumber.HasValue)
-                {
-                    songKey = ParentIndexNumber.Value.ToString("0000") + "-" + songKey;
-                }
-                songKey += Name;
-
-                if (!string.IsNullOrWhiteSpace(Album))
-                {
-                    songKey = Album + "-" + songKey;
-                }
-
-                var albumArtist = AlbumArtists.FirstOrDefault();
-                if (!string.IsNullOrWhiteSpace(albumArtist))
-                {
-                    songKey = albumArtist + "-" + songKey;
-                }
-
-                list.Insert(0, songKey);
+                songKey = ParentIndexNumber.Value.ToString("0000") + "-" + songKey;
             }
-            else
+            songKey += Name;
+
+            if (!string.IsNullOrWhiteSpace(Album))
             {
-                var parent = AlbumEntity;
-
-                if (parent != null && IndexNumber.HasValue)
-                {
-                    list.InsertRange(0, parent.GetUserDataKeys().Select(i =>
-                    {
-                        var songKey = (ParentIndexNumber != null ? ParentIndexNumber.Value.ToString("0000 - ") : "")
-                                      + IndexNumber.Value.ToString("0000 - ");
-
-                        return i + songKey;
-                    }));
-                }
+                songKey = Album + "-" + songKey;
             }
+
+            var albumArtist = AlbumArtists.Length == 0 ? null : AlbumArtists[0];
+            if (!string.IsNullOrWhiteSpace(albumArtist))
+            {
+                songKey = albumArtist + "-" + songKey;
+            }
+
+            list.Insert(0, songKey);
 
             return list;
         }
@@ -260,7 +258,7 @@ namespace MediaBrowser.Controller.Entities.Audio
             return result;
         }
 
-        private static MediaSourceInfo GetVersionInfo(Audio i, bool enablePathSubstituion)
+        private MediaSourceInfo GetVersionInfo(Audio i, bool enablePathSubstituion)
         {
             var locationType = i.LocationType;
 

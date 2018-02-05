@@ -19,6 +19,7 @@ namespace MediaBrowser.Controller.Entities
         /// <value>The local trailer ids.</value>
         Guid[] LocalTrailerIds { get; set; }
         Guid[] RemoteTrailerIds { get; set; }
+        Guid Id { get; set; }
     }
 
     public static class HasTrailerExtensions

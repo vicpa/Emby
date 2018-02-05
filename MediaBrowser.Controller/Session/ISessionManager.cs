@@ -84,6 +84,8 @@ namespace MediaBrowser.Controller.Session
         /// <exception cref="System.ArgumentNullException">user</exception>
         Task<SessionInfo> LogSessionActivity(string appName, string appVersion, string deviceId, string deviceName, string remoteEndPoint, User user);
 
+        void UpdateDeviceName(string sessionId, string reportedDeviceName);
+
         /// <summary>
         /// Used to report that playback has started for an item
         /// </summary>
@@ -318,19 +320,19 @@ namespace MediaBrowser.Controller.Session
         /// </summary>
         /// <param name="accessToken">The access token.</param>
         /// <returns>Task.</returns>
-        Task Logout(string accessToken);
+        void Logout(string accessToken);
 
         /// <summary>
         /// Revokes the user tokens.
         /// </summary>
         /// <returns>Task.</returns>
-        Task RevokeUserTokens(string userId, string currentAccessToken);
+        void RevokeUserTokens(string userId, string currentAccessToken);
 
         /// <summary>
         /// Revokes the token.
         /// </summary>
         /// <param name="id">The identifier.</param>
         /// <returns>Task.</returns>
-        Task RevokeToken(string id);
+        void RevokeToken(string id);
     }
 }

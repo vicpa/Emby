@@ -16,6 +16,7 @@ using MediaBrowser.Model.IO;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Tasks;
 using MediaBrowser.Model.Extensions;
+using MediaBrowser.Controller.Providers;
 
 namespace Emby.Server.Implementations.ScheduledTasks
 {
@@ -58,13 +59,13 @@ namespace Emby.Server.Implementations.ScheduledTasks
         /// </summary>
         public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
         {
-            return new[] { 
-            
+            return new[] {
+
                 new TaskTriggerInfo
                 {
                     Type = TaskTriggerInfo.TriggerDaily,
                     TimeOfDayTicks = TimeSpan.FromHours(2).Ticks,
-                    MaxRuntimeMs = Convert.ToInt32(TimeSpan.FromHours(4).TotalMilliseconds)
+                    MaxRuntimeTicks = TimeSpan.FromHours(4).Ticks
                 }
             };
         }
@@ -88,6 +89,12 @@ namespace Emby.Server.Implementations.ScheduledTasks
                 IsFolder = false,
                 Recursive = true,
                 DtoOptions = new DtoOptions(false)
+                {
+                    EnableImages = false
+                },
+                SourceTypes = new SourceType[] { SourceType.Library },
+                HasChapterImages = false,
+                IsVirtualItem = false
 
             })
                 .OfType<Video>()
@@ -114,6 +121,8 @@ namespace Emby.Server.Implementations.ScheduledTasks
                 previouslyFailedImages = new List<string>();
             }
 
+            var directoryService = new DirectoryService(_fileSystem);
+
             foreach (var video in videos)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -126,7 +135,7 @@ namespace Emby.Server.Implementations.ScheduledTasks
                 {
                     var chapters = _itemRepo.GetChapters(video.Id);
 
-                    var success = await _encodingManager.RefreshChapterImages(video, chapters, extract, true, CancellationToken.None);
+                    var success = await _encodingManager.RefreshChapterImages(video, directoryService, chapters, extract, true, CancellationToken.None);
 
                     if (!success)
                     {

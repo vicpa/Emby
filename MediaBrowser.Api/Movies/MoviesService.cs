@@ -113,16 +113,16 @@ namespace MediaBrowser.Api.Movies
         /// </summary>
         /// <param name="request">The request.</param>
         /// <returns>System.Object.</returns>
-        public async Task<object> Get(GetSimilarMovies request)
+        public object Get(GetSimilarMovies request)
         {
-            var result = await GetSimilarItemsResult(request).ConfigureAwait(false);
+            var result = GetSimilarItemsResult(request);
 
             return ToOptimizedSerializedResultUsingCache(result);
         }
 
-        public async Task<object> Get(GetSimilarTrailers request)
+        public object Get(GetSimilarTrailers request)
         {
-            var result = await GetSimilarItemsResult(request).ConfigureAwait(false);
+            var result = GetSimilarItemsResult(request);
 
             return ToOptimizedSerializedResultUsingCache(result);
         }
@@ -138,7 +138,7 @@ namespace MediaBrowser.Api.Movies
             return ToOptimizedResult(result);
         }
 
-        private async Task<QueryResult<BaseItemDto>> GetSimilarItemsResult(BaseGetSimilarItemsFromItem request)
+        private QueryResult<BaseItemDto> GetSimilarItemsResult(BaseGetSimilarItemsFromItem request)
         {
             var user = !string.IsNullOrWhiteSpace(request.UserId) ? _userManager.GetUserById(request.UserId) : null;
 
@@ -166,11 +166,11 @@ namespace MediaBrowser.Api.Movies
 
             });
 
-            var returnList = await _dtoService.GetBaseItemDtos(itemsResult, dtoOptions, user).ConfigureAwait(false);
+            var returnList = _dtoService.GetBaseItemDtos(itemsResult, dtoOptions, user);
 
             var result = new QueryResult<BaseItemDto>
             {
-                Items = returnList.ToArray(returnList.Count),
+                Items = returnList,
 
                 TotalRecordCount = itemsResult.Count
             };
@@ -193,8 +193,7 @@ namespace MediaBrowser.Api.Movies
                     //typeof(LiveTvProgram).Name
                 },
                 // IsMovie = true
-                SortBy = new[] { ItemSortBy.DatePlayed, ItemSortBy.Random },
-                SortOrder = SortOrder.Descending,
+                OrderBy = new[] { ItemSortBy.DatePlayed, ItemSortBy.Random }.Select(i => new Tuple<string, SortOrder>(i, SortOrder.Descending)).ToArray(),
                 Limit = 7,
                 ParentId = parentIdGuid,
                 Recursive = true,
@@ -215,8 +214,7 @@ namespace MediaBrowser.Api.Movies
             {
                 IncludeItemTypes = itemTypes.ToArray(itemTypes.Count),
                 IsMovie = true,
-                SortBy = new[] { ItemSortBy.Random },
-                SortOrder = SortOrder.Descending,
+                OrderBy = new[] { ItemSortBy.Random }.Select(i => new Tuple<string, SortOrder>(i, SortOrder.Descending)).ToArray(),
                 Limit = 10,
                 IsFavoriteOrLiked = true,
                 ExcludeItemIds = recentlyPlayedMovies.Select(i => i.Id.ToString("N")).ToArray(recentlyPlayedMovies.Count),
@@ -313,14 +311,14 @@ namespace MediaBrowser.Api.Movies
 
                 if (items.Count > 0)
                 {
-                    var returnItems = _dtoService.GetBaseItemDtos(items, dtoOptions, user).Result;
+                    var returnItems = _dtoService.GetBaseItemDtos(items, dtoOptions, user);
 
                     yield return new RecommendationDto
                     {
                         BaselineItemName = name,
                         CategoryId = name.GetMD5().ToString("N"),
                         RecommendationType = type,
-                        Items = returnItems.ToArray(returnItems.Count)
+                        Items = returnItems
                     };
                 }
             }
@@ -353,14 +351,14 @@ namespace MediaBrowser.Api.Movies
 
                 if (items.Count > 0)
                 {
-                    var returnItems = _dtoService.GetBaseItemDtos(items, dtoOptions, user).Result;
+                    var returnItems = _dtoService.GetBaseItemDtos(items, dtoOptions, user);
 
                     yield return new RecommendationDto
                     {
                         BaselineItemName = name,
                         CategoryId = name.GetMD5().ToString("N"),
                         RecommendationType = type,
-                        Items = returnItems.ToArray(returnItems.Count)
+                        Items = returnItems
                     };
                 }
             }
@@ -390,14 +388,14 @@ namespace MediaBrowser.Api.Movies
 
                 if (similar.Count > 0)
                 {
-                    var returnItems = _dtoService.GetBaseItemDtos(similar, dtoOptions, user).Result;
+                    var returnItems = _dtoService.GetBaseItemDtos(similar, dtoOptions, user);
 
                     yield return new RecommendationDto
                     {
                         BaselineItemName = item.Name,
                         CategoryId = item.Id.ToString("N"),
                         RecommendationType = type,
-                        Items = returnItems.ToArray(returnItems.Count)
+                        Items = returnItems
                     };
                 }
             }
@@ -426,7 +424,7 @@ namespace MediaBrowser.Api.Movies
         {
             var people = _libraryManager.GetPeople(new InternalPeopleQuery
             {
-                PersonTypes = new List<string>
+                PersonTypes = new string[]
                 {
                     PersonType.Director
                 }

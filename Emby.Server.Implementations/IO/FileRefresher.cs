@@ -154,20 +154,13 @@ namespace Emby.Server.Implementations.IO
                 .DistinctBy(i => i.Id)
                 .ToList();
 
-            //foreach (var p in paths)
-            //{
-            //    Logger.Info(p + " reports change.");
-            //}
-
-            // If the root folder changed, run the library task so the user can see it
-            if (itemsToRefresh.Any(i => i is AggregateFolder))
-            {
-                LibraryManager.ValidateMediaLibrary(new SimpleProgress<double>(), CancellationToken.None);
-                return;
-            }
-
             foreach (var item in itemsToRefresh)
             {
+                if (item is AggregateFolder)
+                {
+                    continue;
+                }
+
                 Logger.Info(item.Name + " (" + item.Path + ") will be refreshed.");
 
                 try
@@ -209,7 +202,7 @@ namespace Emby.Server.Implementations.IO
                 // If the item has been deleted find the first valid parent that still exists
                 while (!_fileSystem.DirectoryExists(item.Path) && !_fileSystem.FileExists(item.Path))
                 {
-                    item = item.GetParent();
+                    item = item.IsOwnedItem ? item.GetOwner() : item.GetParent();
 
                     if (item == null)
                     {
@@ -238,6 +231,7 @@ namespace Emby.Server.Implementations.IO
         {
             _disposed = true;
             DisposeTimer();
+            GC.SuppressFinalize(this);
         }
     }
 }

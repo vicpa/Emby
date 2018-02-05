@@ -1,5 +1,4 @@
-﻿using Emby.Common.Implementations;
-using Emby.Common.Implementations.Serialization;
+﻿using Emby.Common.Implementations.Serialization;
 using Emby.Dlna;
 using Emby.Dlna.ConnectionManager;
 using Emby.Dlna.ContentDirectory;
@@ -9,11 +8,14 @@ using Emby.Dlna.Ssdp;
 using Emby.Drawing;
 using Emby.Photos;
 using Emby.Server.Implementations.Activity;
+using Emby.Server.Implementations.Archiving;
 using Emby.Server.Implementations.Channels;
 using Emby.Server.Implementations.Collections;
 using Emby.Server.Implementations.Configuration;
+using Emby.Server.Implementations.Cryptography;
 using Emby.Server.Implementations.Data;
 using Emby.Server.Implementations.Devices;
+using Emby.Server.Implementations.Diagnostics;
 using Emby.Server.Implementations.Dto;
 using Emby.Server.Implementations.FFMpeg;
 using Emby.Server.Implementations.HttpServer;
@@ -23,14 +25,19 @@ using Emby.Server.Implementations.Library;
 using Emby.Server.Implementations.LiveTv;
 using Emby.Server.Implementations.Localization;
 using Emby.Server.Implementations.MediaEncoder;
-using Emby.Server.Implementations.Migrations;
+using Emby.Server.Implementations.Net;
 using Emby.Server.Implementations.Notifications;
 using Emby.Server.Implementations.Playlists;
+using Emby.Server.Implementations.Reflection;
+using Emby.Server.Implementations.ScheduledTasks;
 using Emby.Server.Implementations.Security;
+using Emby.Server.Implementations.Serialization;
 using Emby.Server.Implementations.Session;
-using Emby.Server.Implementations.Social;
+using Emby.Server.Implementations.Threading;
 using Emby.Server.Implementations.TV;
 using Emby.Server.Implementations.Updates;
+using Emby.Server.Implementations.Xml;
+using Emby.Server.MediaEncoding.Subtitles;
 using MediaBrowser.Api;
 using MediaBrowser.Common;
 using MediaBrowser.Common.Configuration;
@@ -52,9 +59,6 @@ using MediaBrowser.Controller.Dlna;
 using MediaBrowser.Controller.Drawing;
 using MediaBrowser.Controller.Dto;
 using MediaBrowser.Controller.Entities;
-using MediaBrowser.Controller.Entities.Audio;
-using MediaBrowser.Controller.Entities.Movies;
-using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.LiveTv;
 using MediaBrowser.Controller.MediaEncoding;
@@ -72,10 +76,13 @@ using MediaBrowser.Controller.Subtitles;
 using MediaBrowser.Controller.Sync;
 using MediaBrowser.Controller.TV;
 using MediaBrowser.LocalMetadata.Savers;
+using MediaBrowser.MediaEncoding.BdInfo;
 using MediaBrowser.Model.Activity;
 using MediaBrowser.Model.Configuration;
+using MediaBrowser.Model.Cryptography;
 using MediaBrowser.Model.Diagnostics;
 using MediaBrowser.Model.Dlna;
+using MediaBrowser.Model.Events;
 using MediaBrowser.Model.Globalization;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Model.Logging;
@@ -85,9 +92,10 @@ using MediaBrowser.Model.News;
 using MediaBrowser.Model.Reflection;
 using MediaBrowser.Model.Serialization;
 using MediaBrowser.Model.Services;
-using MediaBrowser.Model.Social;
 using MediaBrowser.Model.System;
+using MediaBrowser.Model.Tasks;
 using MediaBrowser.Model.Text;
+using MediaBrowser.Model.Threading;
 using MediaBrowser.Model.Updates;
 using MediaBrowser.Model.Xml;
 using MediaBrowser.Providers.Chapters;
@@ -95,9 +103,7 @@ using MediaBrowser.Providers.Manager;
 using MediaBrowser.Providers.Subtitles;
 using MediaBrowser.WebDashboard.Api;
 using MediaBrowser.XbmcMetadata.Providers;
-using OpenSubtitlesHandler;
 using ServiceStack;
-using SocketHttpListener.Primitives;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -111,30 +117,15 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Emby.Server.Core.Cryptography;
-using Emby.Server.Implementations.Archiving;
-using Emby.Server.Implementations.Cryptography;
-using Emby.Server.Implementations.Diagnostics;
-using Emby.Server.Implementations.Net;
-using Emby.Server.Implementations.Reflection;
-using Emby.Server.Implementations.ScheduledTasks;
-using Emby.Server.Implementations.Serialization;
-using Emby.Server.Implementations.Threading;
-using Emby.Server.Implementations.Xml;
-using Emby.Server.MediaEncoding.Subtitles;
-using MediaBrowser.MediaEncoding.BdInfo;
-using MediaBrowser.Model.Cryptography;
-using MediaBrowser.Model.Events;
-using MediaBrowser.Model.Tasks;
-using MediaBrowser.Model.Threading;
 using StringExtensions = MediaBrowser.Controller.Extensions.StringExtensions;
+using X509Certificate = System.Security.Cryptography.X509Certificates.X509Certificate;
 
 namespace Emby.Server.Implementations
 {
     /// <summary>
     /// Class CompositionRoot
     /// </summary>
-    public abstract class ApplicationHost : IServerApplicationHost, IDependencyContainer
+    public abstract class ApplicationHost : IServerApplicationHost, IDisposable
     {
         /// <summary>
         /// Gets a value indicating whether this instance can self restart.
@@ -154,6 +145,34 @@ namespace Emby.Server.Implementations
             }
         }
 
+        public virtual bool CanLaunchWebBrowser
+        {
+            get
+            {
+                if (!Environment.UserInteractive)
+                {
+                    return false;
+                }
+
+                if (StartupOptions.ContainsOption("-service"))
+                {
+                    return false;
+                }
+
+                if (EnvironmentInfo.OperatingSystem == MediaBrowser.Model.System.OperatingSystem.Windows)
+                {
+                    return true;
+                }
+
+                if (EnvironmentInfo.OperatingSystem == MediaBrowser.Model.System.OperatingSystem.OSX)
+                {
+                    return true;
+                }
+
+                return false;
+            }
+        }
+
         /// <summary>
         /// Occurs when [has pending restart changed].
         /// </summary>
@@ -169,6 +188,8 @@ namespace Emby.Server.Implementations
         /// </summary>
         /// <value><c>true</c> if this instance has pending application restart; otherwise, <c>false</c>.</value>
         public bool HasPendingRestart { get; private set; }
+
+        public bool IsShuttingDown { get; private set; }
 
         /// <summary>
         /// Gets or sets the logger.
@@ -227,6 +248,8 @@ namespace Emby.Server.Implementations
 
         protected IEnvironmentInfo EnvironmentInfo { get; set; }
 
+        private IBlurayExaminer BlurayExaminer { get; set; }
+
         public PackageVersionClass SystemUpdateLevel
         {
             get
@@ -268,6 +291,11 @@ namespace Emby.Server.Implementations
         protected IConfigurationManager GetConfigurationManager()
         {
             return new ServerConfigurationManager(ApplicationPaths, LogManager, XmlSerializer, FileSystemManager);
+        }
+
+        protected virtual IResourceFileManager CreateResourceFileManager()
+        {
+            return new ResourceFileManager(HttpResultFactory, LogManager.GetLogger("ResourceManager"), FileSystemManager);
         }
 
         /// <summary>
@@ -360,11 +388,11 @@ namespace Emby.Server.Implementations
         /// </summary>
         /// <value>The zip client.</value>
         protected IZipClient ZipClient { get; private set; }
-
+        protected IHttpResultFactory HttpResultFactory { get; private set; }
         protected IAuthService AuthService { get; private set; }
 
-        protected readonly StartupOptions StartupOptions;
-        private readonly string _releaseAssetFilename;
+        public StartupOptions StartupOptions { get; private set; }
+        protected readonly string ReleaseAssetFilename;
 
         internal IPowerManagement PowerManagement { get; private set; }
         internal IImageEncoder ImageEncoder { get; private set; }
@@ -395,6 +423,7 @@ namespace Emby.Server.Implementations
             ISystemEvents systemEvents,
             INetworkManager networkManager)
         {
+
             // hack alert, until common can target .net core
             BaseExtensions.CryptographyProvider = CryptographyProvider;
 
@@ -417,19 +446,21 @@ namespace Emby.Server.Implementations
             Logger = LogManager.GetLogger("App");
 
             StartupOptions = options;
-            _releaseAssetFilename = releaseAssetFilename;
+            ReleaseAssetFilename = releaseAssetFilename;
             PowerManagement = powerManagement;
 
             ImageEncoder = imageEncoder;
 
             SetBaseExceptionMessage();
 
-            if (environmentInfo.OperatingSystem == MediaBrowser.Model.System.OperatingSystem.Windows)
-            {
-                fileSystem.AddShortcutHandler(new LnkShortcutHandler());
-            }
-
             fileSystem.AddShortcutHandler(new MbLinkShortcutHandler(fileSystem));
+
+            NetworkManager.NetworkChanged += NetworkManager_NetworkChanged;
+        }
+
+        private void NetworkManager_NetworkChanged(object sender, EventArgs e)
+        {
+            _validAddressResults.Clear();
         }
 
         private Version _version;
@@ -442,14 +473,6 @@ namespace Emby.Server.Implementations
             get
             {
                 return _version ?? (_version = GetAssembly(GetType()).GetName().Version);
-            }
-        }
-
-        public virtual bool SupportsRunningAsService
-        {
-            get
-            {
-                return false;
             }
         }
 
@@ -476,14 +499,6 @@ namespace Emby.Server.Implementations
             get
             {
                 return "Emby Server";
-            }
-        }
-
-        public virtual bool IsRunningAsService
-        {
-            get
-            {
-                return false;
             }
         }
 
@@ -676,14 +691,14 @@ namespace Emby.Server.Implementations
 
             await MediaEncoder.Init().ConfigureAwait(false);
 
-            if (string.IsNullOrWhiteSpace(MediaEncoder.EncoderPath))
-            {
-                if (ServerConfigurationManager.Configuration.IsStartupWizardCompleted)
-                {
-                    ServerConfigurationManager.Configuration.IsStartupWizardCompleted = false;
-                    ServerConfigurationManager.SaveConfiguration();
-                }
-            }
+            //if (string.IsNullOrWhiteSpace(MediaEncoder.EncoderPath))
+            //{
+            //    if (ServerConfigurationManager.Configuration.IsStartupWizardCompleted)
+            //    {
+            //        ServerConfigurationManager.Configuration.IsStartupWizardCompleted = false;
+            //        ServerConfigurationManager.SaveConfiguration();
+            //    }
+            //}
 
             Logger.Info("ServerId: {0}", SystemId);
             Logger.Info("Core startup complete");
@@ -797,9 +812,6 @@ namespace Emby.Server.Implementations
                 LogEnvironmentInfo(Logger, ApplicationPaths, false);
             }
 
-            // Put the app config in the log for troubleshooting purposes
-            Logger.LogMultiline("Application configuration:", LogSeverity.Info, new StringBuilder(JsonSerializer.SerializeToString(ConfigurationManager.CommonConfiguration)));
-
             if (Plugins != null)
             {
                 var pluginBuilder = new StringBuilder();
@@ -816,6 +828,11 @@ namespace Emby.Server.Implementations
         protected abstract IConnectManager CreateConnectManager();
         protected abstract ISyncManager CreateSyncManager();
 
+        protected virtual IHttpClient CreateHttpClient()
+        {
+            return new HttpClientManager.HttpClientManager(ApplicationPaths, LogManager.GetLogger("HttpClient"), FileSystemManager, MemoryStreamFactory, GetDefaultUserAgent);
+        }
+
         /// <summary>
         /// Registers resources that classes will depend on
         /// </summary>
@@ -830,14 +847,14 @@ namespace Emby.Server.Implementations
             RegisterSingleInstance(MemoryStreamFactory);
             RegisterSingleInstance(SystemEvents);
 
-            RegisterSingleInstance(LogManager);
+            RegisterSingleInstance(LogManager, false);
             RegisterSingleInstance(Logger);
 
             RegisterSingleInstance(EnvironmentInfo);
 
             RegisterSingleInstance(FileSystemManager);
 
-            HttpClient = new HttpClientManager.HttpClientManager(ApplicationPaths, LogManager.GetLogger("HttpClient"), FileSystemManager, MemoryStreamFactory, GetDefaultUserAgent);
+            HttpClient = CreateHttpClient();
             RegisterSingleInstance(HttpClient);
 
             RegisterSingleInstance(NetworkManager);
@@ -866,13 +883,14 @@ namespace Emby.Server.Implementations
             SecurityManager = new PluginSecurityManager(this, HttpClient, JsonSerializer, ApplicationPaths, LogManager, FileSystemManager, CryptographyProvider);
             RegisterSingleInstance(SecurityManager);
 
-            InstallationManager = new InstallationManager(LogManager.GetLogger("InstallationManager"), this, ApplicationPaths, HttpClient, JsonSerializer, SecurityManager, ConfigurationManager, FileSystemManager, CryptographyProvider);
+            InstallationManager = new InstallationManager(LogManager.GetLogger("InstallationManager"), this, ApplicationPaths, HttpClient, JsonSerializer, SecurityManager, ConfigurationManager, FileSystemManager, CryptographyProvider, PackageRuntime);
             RegisterSingleInstance(InstallationManager);
 
             ZipClient = new ZipClient(FileSystemManager);
             RegisterSingleInstance(ZipClient);
 
-            RegisterSingleInstance<IHttpResultFactory>(new HttpResultFactory(LogManager, FileSystemManager, JsonSerializer, MemoryStreamFactory));
+            HttpResultFactory = new HttpResultFactory(LogManager, FileSystemManager, JsonSerializer, MemoryStreamFactory);
+            RegisterSingleInstance(HttpResultFactory);
 
             RegisterSingleInstance<IServerApplicationHost>(this);
             RegisterSingleInstance<IServerApplicationPaths>(ApplicationPaths);
@@ -888,8 +906,8 @@ namespace Emby.Server.Implementations
 
             ITextEncoding textEncoding = new TextEncoding.TextEncoding(FileSystemManager, LogManager.GetLogger("TextEncoding"), JsonSerializer);
             RegisterSingleInstance(textEncoding);
-            Utilities.EncodingHelper = textEncoding;
-            RegisterSingleInstance<IBlurayExaminer>(() => new BdInfoExaminer(FileSystemManager, textEncoding));
+            BlurayExaminer = new BdInfoExaminer(FileSystemManager, textEncoding);
+            RegisterSingleInstance(BlurayExaminer);
 
             RegisterSingleInstance<IXmlReaderSettingsFactory>(new XmlReaderSettingsFactory());
 
@@ -900,7 +918,7 @@ namespace Emby.Server.Implementations
             // This is only needed for disposal purposes. If removing this, make sure to have the manager handle disposing it
             RegisterSingleInstance(UserRepository);
 
-            var displayPreferencesRepo = new SqliteDisplayPreferencesRepository(LogManager.GetLogger("SqliteDisplayPreferencesRepository"), JsonSerializer, ApplicationPaths, MemoryStreamFactory);
+            var displayPreferencesRepo = new SqliteDisplayPreferencesRepository(LogManager.GetLogger("SqliteDisplayPreferencesRepository"), JsonSerializer, ApplicationPaths, MemoryStreamFactory, FileSystemManager);
             DisplayPreferencesRepository = displayPreferencesRepo;
             RegisterSingleInstance(DisplayPreferencesRepository);
 
@@ -960,7 +978,10 @@ namespace Emby.Server.Implementations
             ConnectManager = CreateConnectManager();
             RegisterSingleInstance(ConnectManager);
 
-            DeviceManager = new DeviceManager(new DeviceRepository(ApplicationPaths, JsonSerializer, LogManager.GetLogger("DeviceManager"), FileSystemManager), UserManager, FileSystemManager, LibraryMonitor, ServerConfigurationManager, LogManager.GetLogger("DeviceManager"), NetworkManager);
+            var deviceRepo = new SqliteDeviceRepository(LogManager.GetLogger("DeviceManager"), ServerConfigurationManager, FileSystemManager, JsonSerializer);
+            deviceRepo.Initialize();
+            DeviceManager = new DeviceManager(deviceRepo, UserManager, FileSystemManager, LibraryMonitor, ServerConfigurationManager, LogManager.GetLogger("DeviceManager"), NetworkManager);
+            RegisterSingleInstance<IDeviceRepository>(deviceRepo);
             RegisterSingleInstance(DeviceManager);
 
             var newsService = new Emby.Server.Implementations.News.NewsService(ApplicationPaths, JsonSerializer);
@@ -971,7 +992,7 @@ namespace Emby.Server.Implementations
             ChannelManager = new ChannelManager(UserManager, DtoService, LibraryManager, LogManager.GetLogger("ChannelManager"), ServerConfigurationManager, FileSystemManager, UserDataManager, JsonSerializer, LocalizationManager, HttpClient, ProviderManager);
             RegisterSingleInstance(ChannelManager);
 
-            MediaSourceManager = new MediaSourceManager(ItemRepository, UserManager, LibraryManager, LogManager.GetLogger("MediaSourceManager"), JsonSerializer, FileSystemManager, UserDataManager, TimerFactory);
+            MediaSourceManager = new MediaSourceManager(ItemRepository, UserManager, LibraryManager, LogManager.GetLogger("MediaSourceManager"), JsonSerializer, FileSystemManager, UserDataManager, TimerFactory, () => MediaEncoder);
             RegisterSingleInstance(MediaSourceManager);
 
             SessionManager = new SessionManager(UserDataManager, LogManager.GetLogger("SessionManager"), LibraryManager, UserManager, musicManager, DtoService, ImageProcessor, JsonSerializer, this, HttpClient, AuthenticationRepository, DeviceManager, MediaSourceManager, TimerFactory);
@@ -1004,7 +1025,7 @@ namespace Emby.Server.Implementations
             NotificationManager = new NotificationManager(LogManager, UserManager, ServerConfigurationManager);
             RegisterSingleInstance(NotificationManager);
 
-            SubtitleManager = new SubtitleManager(LogManager.GetLogger("SubtitleManager"), FileSystemManager, LibraryMonitor, LibraryManager, MediaSourceManager);
+            SubtitleManager = new SubtitleManager(LogManager.GetLogger("SubtitleManager"), FileSystemManager, LibraryMonitor, LibraryManager, MediaSourceManager, ServerConfigurationManager);
             RegisterSingleInstance(SubtitleManager);
 
             RegisterSingleInstance<IDeviceDiscovery>(new DeviceDiscovery(LogManager.GetLogger("IDeviceDiscovery"), ServerConfigurationManager, SocketFactory, TimerFactory));
@@ -1017,12 +1038,6 @@ namespace Emby.Server.Implementations
 
             EncodingManager = new EncodingManager(FileSystemManager, Logger, MediaEncoder, ChapterManager, LibraryManager);
             RegisterSingleInstance(EncodingManager);
-
-            var sharingRepo = new SharingRepository(LogManager.GetLogger("SharingRepository"), ApplicationPaths);
-            sharingRepo.Initialize();
-            // This is only needed for disposal purposes. If removing this, make sure to have the manager handle disposing it
-            RegisterSingleInstance<ISharingRepository>(sharingRepo);
-            RegisterSingleInstance<ISharingManager>(new SharingManager(sharingRepo, ServerConfigurationManager, LibraryManager, this));
 
             var activityLogRepo = GetActivityLogRepository();
             RegisterSingleInstance(activityLogRepo);
@@ -1038,6 +1053,8 @@ namespace Emby.Server.Implementations
             SubtitleEncoder = new SubtitleEncoder(LibraryManager, LogManager.GetLogger("SubtitleEncoder"), ApplicationPaths, FileSystemManager, MediaEncoder, JsonSerializer, HttpClient, MediaSourceManager, MemoryStreamFactory, ProcessFactory, textEncoding);
             RegisterSingleInstance(SubtitleEncoder);
 
+            RegisterSingleInstance(CreateResourceFileManager());
+
             displayPreferencesRepo.Initialize();
 
             var userDataRepo = new SqliteUserDataRepository(LogManager.GetLogger("SqliteUserDataRepository"), ApplicationPaths, FileSystemManager);
@@ -1050,7 +1067,15 @@ namespace Emby.Server.Implementations
 
             SetStaticProperties();
 
-            await ((UserManager)UserManager).Initialize().ConfigureAwait(false);
+            ((UserManager)UserManager).Initialize();
+        }
+
+        public virtual string PackageRuntime
+        {
+            get
+            {
+                return "netframework";
+            }
         }
 
         public static void LogEnvironmentInfo(ILogger logger, IApplicationPaths appPaths, bool isStartup)
@@ -1067,6 +1092,7 @@ namespace Emby.Server.Implementations
             builder.AppendLine(string.Format("Operating system: {0}", Environment.OSVersion));
             builder.AppendLine(string.Format("64-Bit OS: {0}", Environment.Is64BitOperatingSystem));
             builder.AppendLine(string.Format("64-Bit Process: {0}", Environment.Is64BitProcess));
+            builder.AppendLine(string.Format("User Interactive: {0}", Environment.UserInteractive));
 
             Type type = Type.GetType("Mono.Runtime");
             if (type != null)
@@ -1129,7 +1155,7 @@ namespace Emby.Server.Implementations
             IsoManager.AddParts(list);
         }
 
-        private string GetDefaultUserAgent()
+        protected string GetDefaultUserAgent()
         {
             var name = FormatAttribute(Name);
 
@@ -1161,7 +1187,7 @@ namespace Emby.Server.Implementations
             }
         }
 
-        private ICertificate GetCertificate(CertificateInfo info)
+        private X509Certificate GetCertificate(CertificateInfo info)
         {
             var certificateLocation = info == null ? null : info.Path;
 
@@ -1184,11 +1210,11 @@ namespace Emby.Server.Implementations
                 //localCert.PrivateKey = PrivateKey.CreateFromFile(pvk_file).RSA;
                 if (!localCert.HasPrivateKey)
                 {
-                    //throw new FileNotFoundException("Secure requested, no private key included", certificateLocation);
+                    Logger.Error("No private key included in SSL cert {0}.", certificateLocation);
                     return null;
                 }
 
-                return new Certificate(localCert);
+                return localCert;
             }
             catch (Exception ex)
             {
@@ -1199,7 +1225,7 @@ namespace Emby.Server.Implementations
 
         private IImageProcessor GetImageProcessor()
         {
-            return new ImageProcessor(LogManager.GetLogger("ImageProcessor"), ServerConfigurationManager.ApplicationPaths, FileSystemManager, JsonSerializer, ImageEncoder, () => LibraryManager, TimerFactory);
+            return new ImageProcessor(LogManager.GetLogger("ImageProcessor"), ServerConfigurationManager.ApplicationPaths, FileSystemManager, JsonSerializer, ImageEncoder, () => LibraryManager, TimerFactory, () => MediaEncoder);
         }
 
         protected virtual FFMpegInstallInfo GetFfmpegInstallInfo()
@@ -1217,7 +1243,7 @@ namespace Emby.Server.Implementations
                 info.FFProbeFilename = "ffprobe";
                 info.ArchiveType = "7z";
                 info.Version = "20170308";
-                info.DownloadUrls = GetLinuxDownloadUrls();
+                info.DownloadUrls = new string[] { };
             }
             else if (EnvironmentInfo.OperatingSystem == MediaBrowser.Model.System.OperatingSystem.Windows)
             {
@@ -1225,7 +1251,7 @@ namespace Emby.Server.Implementations
                 info.FFProbeFilename = "ffprobe.exe";
                 info.Version = "20170308";
                 info.ArchiveType = "7z";
-                info.DownloadUrls = GetWindowsDownloadUrls();
+                info.DownloadUrls = new string[] { };
             }
             else if (EnvironmentInfo.OperatingSystem == MediaBrowser.Model.System.OperatingSystem.OSX)
             {
@@ -1233,7 +1259,7 @@ namespace Emby.Server.Implementations
                 info.FFProbeFilename = "ffprobe";
                 info.ArchiveType = "7z";
                 info.Version = "20170308";
-                info.DownloadUrls = GetMacDownloadUrls();
+                info.DownloadUrls = new string[] { };
             }
             else
             {
@@ -1242,58 +1268,6 @@ namespace Emby.Server.Implementations
             }
 
             return info;
-        }
-
-        private string[] GetMacDownloadUrls()
-        {
-            switch (EnvironmentInfo.SystemArchitecture)
-            {
-                case MediaBrowser.Model.System.Architecture.X64:
-                    return new[]
-                    {
-                        "https://embydata.com/downloads/ffmpeg/osx/ffmpeg-x64-20170308.7z"
-                    };
-            }
-
-            return new string[] { };
-        }
-
-        private string[] GetWindowsDownloadUrls()
-        {
-            switch (EnvironmentInfo.SystemArchitecture)
-            {
-                case MediaBrowser.Model.System.Architecture.X64:
-                    return new[]
-                    {
-                        "https://embydata.com/downloads/ffmpeg/windows/ffmpeg-20170308-win64.7z"
-                    };
-                case MediaBrowser.Model.System.Architecture.X86:
-                    return new[]
-                    {
-                        "https://embydata.com/downloads/ffmpeg/windows/ffmpeg-20170308-win32.7z"
-                    };
-            }
-
-            return new string[] { };
-        }
-
-        private string[] GetLinuxDownloadUrls()
-        {
-            switch (EnvironmentInfo.SystemArchitecture)
-            {
-                case MediaBrowser.Model.System.Architecture.X64:
-                    return new[]
-                    {
-                        "https://embydata.com/downloads/ffmpeg/linux/ffmpeg-git-20170301-64bit-static.7z"
-                    };
-                case MediaBrowser.Model.System.Architecture.X86:
-                    return new[]
-                    {
-                        "https://embydata.com/downloads/ffmpeg/linux/ffmpeg-git-20170301-32bit-static.7z"
-                    };
-            }
-
-            return new string[] { };
         }
 
         /// <summary>
@@ -1332,7 +1306,8 @@ namespace Emby.Server.Implementations
                 ProcessFactory,
                 (Environment.ProcessorCount > 2 ? 14000 : 40000),
                 EnvironmentInfo.OperatingSystem == MediaBrowser.Model.System.OperatingSystem.Windows,
-                EnvironmentInfo);
+                EnvironmentInfo,
+                BlurayExaminer);
 
             MediaEncoder = mediaEncoder;
             RegisterSingleInstance(MediaEncoder);
@@ -1362,7 +1337,7 @@ namespace Emby.Server.Implementations
 
         private IActivityRepository GetActivityLogRepository()
         {
-            var repo = new ActivityRepository(LogManager.GetLogger("ActivityRepository"), ServerConfigurationManager.ApplicationPaths);
+            var repo = new ActivityRepository(LogManager.GetLogger("ActivityRepository"), ServerConfigurationManager.ApplicationPaths, FileSystemManager);
 
             repo.Initialize();
 
@@ -1408,7 +1383,6 @@ namespace Emby.Server.Implementations
             BaseItem.CollectionManager = CollectionManager;
             BaseItem.MediaSourceManager = MediaSourceManager;
             CollectionFolder.XmlSerializer = XmlSerializer;
-            Utilities.CryptographyProvider = CryptographyProvider;
             AuthenticatedAttribute.AuthService = AuthService;
         }
 
@@ -1423,8 +1397,6 @@ namespace Emby.Server.Implementations
                 ServerConfigurationManager.Configuration.IsPortAuthorized = true;
                 ConfigurationManager.SaveConfiguration();
             }
-
-            RegisterModules();
 
             ConfigurationManager.AddParts(GetExports<IConfigurationFactory>());
             Plugins = GetExports<IPlugin>().Select(LoadPlugin).Where(i => i != null).ToArray();
@@ -1475,13 +1447,26 @@ namespace Emby.Server.Implementations
                     var assembly = plugin.GetType().Assembly;
                     var assemblyName = assembly.GetName();
 
-                    var attribute = (GuidAttribute)assembly.GetCustomAttributes(typeof(GuidAttribute), true)[0];
-                    var assemblyId = new Guid(attribute.Value);
-
                     var assemblyFileName = assemblyName.Name + ".dll";
                     var assemblyFilePath = Path.Combine(ApplicationPaths.PluginsPath, assemblyFileName);
 
-                    assemblyPlugin.SetAttributes(assemblyFilePath, assemblyFileName, assemblyName.Version, assemblyId);
+                    assemblyPlugin.SetAttributes(assemblyFilePath, assemblyFileName, assemblyName.Version);
+
+                    try
+                    {
+                        var idAttributes = assembly.GetCustomAttributes(typeof(GuidAttribute), true);
+                        if (idAttributes.Length > 0)
+                        {
+                            var attribute = (GuidAttribute)idAttributes[0];
+                            var assemblyId = new Guid(attribute.Value);
+
+                            assemblyPlugin.SetId(assemblyId);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.ErrorException("Error getting plugin Id from {0}.", ex, plugin.GetType().FullName);
+                    }
                 }
 
                 var isFirstRun = !File.Exists(plugin.ConfigurationFilePath);
@@ -1501,6 +1486,8 @@ namespace Emby.Server.Implementations
         /// </summary>
         protected void DiscoverTypes()
         {
+            Logger.Info("Loading assemblies");
+
             FailedAssemblies.Clear();
 
             var assemblies = GetComposablePartAssemblies().ToList();
@@ -1563,7 +1550,7 @@ namespace Emby.Server.Implementations
         }
 
         private CertificateInfo CertificateInfo { get; set; }
-        private ICertificate Certificate { get; set; }
+        private X509Certificate Certificate { get; set; }
 
         private IEnumerable<string> GetUrlPrefixes()
         {
@@ -1594,7 +1581,7 @@ namespace Emby.Server.Implementations
         {
             try
             {
-                ServerManager.Start(GetUrlPrefixes());
+                ServerManager.Start(GetUrlPrefixes().ToArray());
                 return;
             }
             catch (Exception ex)
@@ -1611,7 +1598,7 @@ namespace Emby.Server.Implementations
 
             try
             {
-                ServerManager.Start(GetUrlPrefixes());
+                ServerManager.Start(GetUrlPrefixes().ToArray());
             }
             catch (Exception ex)
             {
@@ -1638,23 +1625,23 @@ namespace Emby.Server.Implementations
             var certPath = Path.Combine(ServerConfigurationManager.ApplicationPaths.ProgramDataPath, "ssl", "cert_" + (certHost + "2").GetMD5().ToString("N") + ".pfx");
             var password = "embycert";
 
-            if (generateCertificate)
-            {
-                if (!FileSystemManager.FileExists(certPath))
-                {
-                    FileSystemManager.CreateDirectory(FileSystemManager.GetDirectoryName(certPath));
+            //if (generateCertificate)
+            //{
+            //    if (!FileSystemManager.FileExists(certPath))
+            //    {
+            //        FileSystemManager.CreateDirectory(FileSystemManager.GetDirectoryName(certPath));
 
-                    try
-                    {
-                        CertificateGenerator.CreateSelfSignCertificatePfx(certPath, certHost, password, Logger);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.ErrorException("Error creating ssl cert", ex);
-                        return null;
-                    }
-                }
-            }
+            //        try
+            //        {
+            //            CertificateGenerator.CreateSelfSignCertificatePfx(certPath, certHost, password, Logger);
+            //        }
+            //        catch (Exception ex)
+            //        {
+            //            Logger.ErrorException("Error creating ssl cert", ex);
+            //            return null;
+            //        }
+            //    }
+            //}
 
             return new CertificateInfo
             {
@@ -1733,25 +1720,35 @@ namespace Emby.Server.Implementations
         /// <summary>
         /// Restarts this instance.
         /// </summary>
-        public async Task Restart()
+        public void Restart()
         {
             if (!CanSelfRestart)
             {
                 throw new PlatformNotSupportedException("The server is unable to self-restart. Please restart manually.");
             }
 
-            try
+            if (IsShuttingDown)
             {
-                await SessionManager.SendServerRestartNotification(CancellationToken.None).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Logger.ErrorException("Error sending server restart notification", ex);
+                return;
             }
 
-            Logger.Info("Calling RestartInternal");
+            IsShuttingDown = true;
 
-            RestartInternal();
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await SessionManager.SendServerRestartNotification(CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Logger.ErrorException("Error sending server restart notification", ex);
+                }
+
+                Logger.Info("Calling RestartInternal");
+
+                RestartInternal();
+            });
         }
 
         protected abstract void RestartInternal();
@@ -1839,7 +1836,33 @@ namespace Emby.Server.Implementations
             {
                 "mbplus.dll",
                 "mbintros.dll",
-                "embytv.dll"
+                "embytv.dll",
+                "Messenger.dll",
+                "MediaBrowser.Plugins.TvMazeProvider.dll",
+                "MBBookshelf.dll",
+                "MediaBrowser.Channels.Adult.YouJizz.dll",
+                "MediaBrowser.Channels.Vine-co.dll",
+                "MediaBrowser.Plugins.Vimeo.dll",
+                "MediaBrowser.Channels.Vevo.dll",
+                "MediaBrowser.Plugins.Twitch.dll",
+                "MediaBrowser.Channels.SvtPlay.dll",
+                "MediaBrowser.Plugins.SoundCloud.dll",
+                "MediaBrowser.Plugins.SnesBox.dll",
+                "MediaBrowser.Plugins.RottenTomatoes.dll",
+                "MediaBrowser.Plugins.Revision3.dll",
+                "MediaBrowser.Plugins.NesBox.dll",
+                "MBChapters.dll",
+                "MediaBrowser.Channels.LeagueOfLegends.dll",
+                "MediaBrowser.Plugins.ADEProvider.dll",
+                "MediaBrowser.Channels.BallStreams.dll",
+                "MediaBrowser.Channels.Adult.Beeg.dll",
+                "ChannelDownloader.dll",
+                "Hamstercat.Emby.EmbyBands.dll",
+                "EmbyTV.dll",
+                "MediaBrowser.Channels.HitboxTV.dll",
+                "MediaBrowser.Channels.HockeyStreams.dll",
+                "MediaBrowser.Plugins.ITV.dll",
+                "MediaBrowser.Plugins.Lastfm.dll"
             };
 
             return !exclude.Contains(filename ?? string.Empty, StringComparer.OrdinalIgnoreCase);
@@ -1849,18 +1872,19 @@ namespace Emby.Server.Implementations
         /// Gets the system status.
         /// </summary>
         /// <returns>SystemInfo.</returns>
-        public async Task<SystemInfo> GetSystemInfo()
+        public async Task<SystemInfo> GetSystemInfo(CancellationToken cancellationToken)
         {
-            var localAddress = await GetLocalApiUrl().ConfigureAwait(false);
+            var localAddress = await GetLocalApiUrl(cancellationToken).ConfigureAwait(false);
 
             return new SystemInfo
             {
                 HasPendingRestart = HasPendingRestart,
+                IsShuttingDown = IsShuttingDown,
                 Version = ApplicationVersion.ToString(),
                 WebSocketPortNumber = HttpPort,
-                FailedPluginAssemblies = FailedAssemblies.ToList(),
-                InProgressInstallations = InstallationManager.CurrentInstallations.Select(i => i.Item1).ToList(),
-                CompletedInstallations = InstallationManager.CompletedInstallations.ToList(),
+                FailedPluginAssemblies = FailedAssemblies.ToArray(),
+                InProgressInstallations = InstallationManager.CurrentInstallations.Select(i => i.Item1).ToArray(),
+                CompletedInstallations = InstallationManager.CompletedInstallations.ToArray(),
                 Id = SystemId,
                 ProgramDataPath = ApplicationPaths.ProgramDataPath,
                 LogPath = ApplicationPaths.LogDirectoryPath,
@@ -1875,11 +1899,11 @@ namespace Emby.Server.Implementations
                 OperatingSystemDisplayName = OperatingSystemDisplayName,
                 CanSelfRestart = CanSelfRestart,
                 CanSelfUpdate = CanSelfUpdate,
+                CanLaunchWebBrowser = CanLaunchWebBrowser,
                 WanAddress = ConnectManager.WanApiAddress,
                 HasUpdateAvailable = HasUpdateAvailable,
                 SupportsAutoRunAtStartup = SupportsAutoRunAtStartup,
                 TranscodingTempPath = ApplicationPaths.TranscodingTempPath,
-                SupportsRunningAsService = SupportsRunningAsService,
                 ServerName = FriendlyName,
                 LocalAddress = localAddress,
                 SupportsLibraryMonitor = true,
@@ -1890,27 +1914,42 @@ namespace Emby.Server.Implementations
             };
         }
 
+        public async Task<PublicSystemInfo> GetPublicSystemInfo(CancellationToken cancellationToken)
+        {
+            var localAddress = await GetLocalApiUrl(cancellationToken).ConfigureAwait(false);
+
+            return new PublicSystemInfo
+            {
+                Version = ApplicationVersion.ToString(),
+                Id = SystemId,
+                OperatingSystem = EnvironmentInfo.OperatingSystem.ToString(),
+                WanAddress = ConnectManager.WanApiAddress,
+                ServerName = FriendlyName,
+                LocalAddress = localAddress
+            };
+        }
+
         public bool EnableHttps
         {
             get
             {
-                return SupportsHttps && ServerConfigurationManager.Configuration.EnableHttps;
+                return SupportsHttps && (ServerConfigurationManager.Configuration.EnableHttps || ServerConfigurationManager.Configuration.RequireHttps);
             }
         }
 
         public bool SupportsHttps
         {
-            get { return Certificate != null; }
+            get { return Certificate != null || ServerConfigurationManager.Configuration.IsBehindProxy; }
         }
 
-        public async Task<string> GetLocalApiUrl()
+        public async Task<string> GetLocalApiUrl(CancellationToken cancellationToken)
         {
             try
             {
                 // Return the first matched address, if found, or the first known local address
-                var address = (await GetLocalIpAddresses().ConfigureAwait(false)).FirstOrDefault(i => !i.Equals(IpAddressInfo.Loopback) && !i.Equals(IpAddressInfo.IPv6Loopback));
+                var addresses = await GetLocalIpAddressesInternal(false, 1, cancellationToken).ConfigureAwait(false);
 
-                if (address != null)
+                foreach (var address in addresses)
                 {
                     return GetLocalApiUrl(address);
                 }
@@ -1942,7 +1981,12 @@ namespace Emby.Server.Implementations
                 HttpPort.ToString(CultureInfo.InvariantCulture));
         }
 
-        public async Task<List<IpAddressInfo>> GetLocalIpAddresses()
+        public Task<List<IpAddressInfo>> GetLocalIpAddresses(CancellationToken cancellationToken)
+        {
+            return GetLocalIpAddressesInternal(true, 0, cancellationToken);
+        }
+
+        private async Task<List<IpAddressInfo>> GetLocalIpAddressesInternal(bool allowLoopback, int limit, CancellationToken cancellationToken)
         {
             var addresses = ServerConfigurationManager
                 .Configuration
@@ -1954,22 +1998,33 @@ namespace Emby.Server.Implementations
             if (addresses.Count == 0)
             {
                 addresses.AddRange(NetworkManager.GetLocalIpAddresses());
+            }
 
-                var list = new List<IpAddressInfo>();
+            var resultList = new List<IpAddressInfo>();
 
-                foreach (var address in addresses)
+            foreach (var address in addresses)
+            {
+                if (!allowLoopback)
                 {
-                    var valid = await IsIpAddressValidAsync(address).ConfigureAwait(false);
-                    if (valid)
+                    if (address.Equals(IpAddressInfo.Loopback) || address.Equals(IpAddressInfo.IPv6Loopback))
                     {
-                        list.Add(address);
+                        continue;
                     }
                 }
 
-                addresses = list;
+                var valid = await IsIpAddressValidAsync(address, cancellationToken).ConfigureAwait(false);
+                if (valid)
+                {
+                    resultList.Add(address);
+
+                    if (limit > 0 && resultList.Count >= limit)
+                    {
+                        return resultList;
+                    }
+                }
             }
 
-            return addresses;
+            return resultList;
         }
 
         private IpAddressInfo NormalizeConfiguredLocalAddress(string address)
@@ -1990,8 +2045,7 @@ namespace Emby.Server.Implementations
         }
 
         private readonly ConcurrentDictionary<string, bool> _validAddressResults = new ConcurrentDictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-        private DateTime _lastAddressCacheClear;
-        private async Task<bool> IsIpAddressValidAsync(IpAddressInfo address)
+        private async Task<bool> IsIpAddressValidAsync(IpAddressInfo address, CancellationToken cancellationToken)
         {
             if (address.Equals(IpAddressInfo.Loopback) ||
                 address.Equals(IpAddressInfo.IPv6Loopback))
@@ -2001,12 +2055,6 @@ namespace Emby.Server.Implementations
 
             var apiUrl = GetLocalApiUrl(address);
             apiUrl += "/system/ping";
-
-            if ((DateTime.UtcNow - _lastAddressCacheClear).TotalMinutes >= 15)
-            {
-                _lastAddressCacheClear = DateTime.UtcNow;
-                _validAddressResults.Clear();
-            }
 
             bool cachedResult;
             if (_validAddressResults.TryGetValue(apiUrl, out cachedResult))
@@ -2023,7 +2071,9 @@ namespace Emby.Server.Implementations
                     LogErrors = false,
                     LogRequest = false,
                     TimeoutMs = 30000,
-                    BufferContent = false
+                    BufferContent = false,
+
+                    CancellationToken = cancellationToken
 
                 }, "POST").ConfigureAwait(false))
                 {
@@ -2033,14 +2083,19 @@ namespace Emby.Server.Implementations
                         var valid = string.Equals(Name, result, StringComparison.OrdinalIgnoreCase);
 
                         _validAddressResults.AddOrUpdate(apiUrl, valid, (k, v) => valid);
-                        //Logger.Debug("Ping test result to {0}. Success: {1}", apiUrl, valid);
+                        Logger.Debug("Ping test result to {0}. Success: {1}", apiUrl, valid);
                         return valid;
                     }
                 }
             }
+            catch (OperationCanceledException)
+            {
+                Logger.Debug("Ping test result to {0}. Success: {1}", apiUrl, "Cancelled");
+                throw;
+            }
             catch
             {
-                //Logger.Debug("Ping test result to {0}. Success: {1}", apiUrl, false);
+                Logger.Debug("Ping test result to {0}. Success: {1}", apiUrl, false);
 
                 _validAddressResults.AddOrUpdate(apiUrl, false, (k, v) => false);
                 return false;
@@ -2083,6 +2138,13 @@ namespace Emby.Server.Implementations
         /// </summary>
         public async Task Shutdown()
         {
+            if (IsShuttingDown)
+            {
+                return;
+            }
+
+            IsShuttingDown = true;
+
             try
             {
                 await SessionManager.SendServerShutdownNotification(CancellationToken.None).ConfigureAwait(false);
@@ -2161,20 +2223,46 @@ namespace Emby.Server.Implementations
         /// <returns>Task{CheckForUpdateResult}.</returns>
         public async Task<CheckForUpdateResult> CheckForApplicationUpdate(CancellationToken cancellationToken, IProgress<double> progress)
         {
-            var cacheLength = TimeSpan.FromHours(1);
             var updateLevel = SystemUpdateLevel;
+            var cacheLength = updateLevel == PackageVersionClass.Release ?
+                TimeSpan.FromHours(12) :
+                TimeSpan.FromMinutes(5);
 
-            if (updateLevel != PackageVersionClass.Release)
+            try
             {
-                cacheLength = TimeSpan.FromMinutes(5);
+                var result = await new GithubUpdater(HttpClient, JsonSerializer).CheckForUpdateResult("MediaBrowser",
+                    "Emby",
+                    ApplicationVersion,
+                    updateLevel,
+                    ReleaseAssetFilename,
+                    "MBServer",
+                    UpdateTargetFileName,
+                    cacheLength,
+                    cancellationToken).ConfigureAwait(false);
+
+                HasUpdateAvailable = result.IsUpdateAvailable;
+
+                return result;
             }
+            catch (HttpException ex)
+            {
+                // users are overreacting to this occasionally failing
+                if (ex.StatusCode.HasValue && ex.StatusCode.Value == HttpStatusCode.Forbidden)
+                {
+                    HasUpdateAvailable = false;
+                    return new CheckForUpdateResult
+                    {
+                        IsUpdateAvailable = false
+                    };
+                }
 
-            var result = await new GithubUpdater(HttpClient, JsonSerializer).CheckForUpdateResult("MediaBrowser", "Emby", ApplicationVersion, updateLevel, _releaseAssetFilename,
-                "MBServer", "Mbserver.zip", cacheLength, cancellationToken).ConfigureAwait(false);
+                throw;
+            }
+        }
 
-            HasUpdateAvailable = result.IsUpdateAvailable;
-
-            return result;
+        protected virtual string UpdateTargetFileName
+        {
+            get { return "Mbserver.zip"; }
         }
 
         /// <summary>
@@ -2232,12 +2320,11 @@ namespace Emby.Server.Implementations
             }
         }
 
-        public void LaunchUrl(string url)
+        public virtual void LaunchUrl(string url)
         {
-            if (EnvironmentInfo.OperatingSystem != MediaBrowser.Model.System.OperatingSystem.Windows &&
-                EnvironmentInfo.OperatingSystem != MediaBrowser.Model.System.OperatingSystem.OSX)
+            if (!CanLaunchWebBrowser)
             {
-                throw new NotImplementedException();
+                throw new NotSupportedException();
             }
 
             var process = ProcessFactory.Create(new ProcessOptions
@@ -2272,25 +2359,6 @@ namespace Emby.Server.Implementations
         {
         }
 
-        private void RegisterModules()
-        {
-            var moduleTypes = GetExportTypes<IDependencyModule>();
-
-            foreach (var type in moduleTypes)
-            {
-                try
-                {
-                    var instance = Activator.CreateInstance(type) as IDependencyModule;
-                    if (instance != null)
-                        instance.BindDependencies(this);
-                }
-                catch (Exception ex)
-                {
-                    Logger.ErrorException("Error setting up dependency bindings for " + type.Name, ex);
-                }
-            }
-        }
-
         /// <summary>
         /// Called when [application updated].
         /// </summary>
@@ -2319,6 +2387,7 @@ namespace Emby.Server.Implementations
                 _disposed = true;
 
                 Dispose(true);
+                GC.SuppressFinalize(this);
             }
         }
 
@@ -2332,6 +2401,7 @@ namespace Emby.Server.Implementations
             {
                 var type = GetType();
 
+                LogManager.AddConsoleOutput();
                 Logger.Info("Disposing " + type.Name);
 
                 var parts = DisposableParts.Distinct().Where(i => i.GetType() != type).ToList();
@@ -2351,21 +2421,6 @@ namespace Emby.Server.Implementations
                     }
                 }
             }
-        }
-
-        void IDependencyContainer.RegisterSingleInstance<T>(T obj, bool manageLifetime)
-        {
-            RegisterSingleInstance(obj, manageLifetime);
-        }
-
-        void IDependencyContainer.RegisterSingleInstance<T>(Func<T> func)
-        {
-            RegisterSingleInstance(func);
-        }
-
-        void IDependencyContainer.Register(Type typeInterface, Type typeImplementation)
-        {
-            Container.Register(typeInterface, typeImplementation);
         }
     }
 

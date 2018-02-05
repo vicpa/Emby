@@ -29,7 +29,7 @@ namespace MediaBrowser.Providers.Movies
     /// <summary>
     /// Class MovieDbProvider
     /// </summary>
-    public class MovieDbProvider : IRemoteMetadataProvider<Movie, MovieInfo>, IDisposable, IHasOrder
+    public class MovieDbProvider : IRemoteMetadataProvider<Movie, MovieInfo>, IHasOrder
     {
         internal static MovieDbProvider Current { get; private set; }
 
@@ -78,7 +78,7 @@ namespace MediaBrowser.Providers.Movies
 
                 var tmdbSettings = await GetTmdbSettings(cancellationToken).ConfigureAwait(false);
 
-                var tmdbImageUrl = tmdbSettings.images.secure_base_url + "original";
+                var tmdbImageUrl = tmdbSettings.images.GetImageUrl("original");
 
                 var remoteResult = new RemoteSearchResult
                 {
@@ -131,14 +131,6 @@ namespace MediaBrowser.Providers.Movies
         }
 
         /// <summary>
-        /// Releases unmanaged and - optionally - managed resources.
-        /// </summary>
-        /// <param name="dispose"><c>true</c> to release both managed and unmanaged resources; <c>false</c> to release only unmanaged resources.</param>
-        protected virtual void Dispose(bool dispose)
-        {
-        }
-
-        /// <summary>
         /// The _TMDB settings task
         /// </summary>
         private TmdbSettingsResult _tmdbSettings;
@@ -154,7 +146,7 @@ namespace MediaBrowser.Providers.Movies
                 return _tmdbSettings;
             }
 
-            using (var json = await GetMovieDbResponse(new HttpRequestOptions
+            using (var response = await GetMovieDbResponse(new HttpRequestOptions
             {
                 Url = string.Format(TmdbConfigUrl, ApiKey),
                 CancellationToken = cancellationToken,
@@ -162,14 +154,19 @@ namespace MediaBrowser.Providers.Movies
 
             }).ConfigureAwait(false))
             {
-                _tmdbSettings = _jsonSerializer.DeserializeFromStream<TmdbSettingsResult>(json);
+                using (var json = response.Content)
+                {
+                    _tmdbSettings = _jsonSerializer.DeserializeFromStream<TmdbSettingsResult>(json);
 
-                return _tmdbSettings;
+                    return _tmdbSettings;
+                }
             }
         }
 
-        private const string TmdbConfigUrl = "https://api.themoviedb.org/3/configuration?api_key={0}";
-        private const string GetMovieInfo3 = @"https://api.themoviedb.org/3/movie/{0}?api_key={1}&append_to_response=casts,releases,images,keywords,trailers";
+        public const string BaseMovieDbUrl = "https://api.themoviedb.org/";
+
+        private const string TmdbConfigUrl = BaseMovieDbUrl + "3/configuration?api_key={0}";
+        private const string GetMovieInfo3 = BaseMovieDbUrl + @"3/movie/{0}?api_key={1}&append_to_response=casts,releases,images,keywords,trailers";
 
         internal static string ApiKey = "f6bd687ffa63cd282b6ff2c6877f2669";
         internal static string AcceptHeader = "application/json,image/*";
@@ -347,7 +344,7 @@ namespace MediaBrowser.Providers.Movies
 
             try
             {
-                using (var json = await GetMovieDbResponse(new HttpRequestOptions
+                using (var response = await GetMovieDbResponse(new HttpRequestOptions
                 {
                     Url = url,
                     CancellationToken = cancellationToken,
@@ -357,7 +354,10 @@ namespace MediaBrowser.Providers.Movies
 
                 }).ConfigureAwait(false))
                 {
-                    mainResult = _jsonSerializer.DeserializeFromStream<CompleteMovieData>(json);
+                    using (var json = response.Content)
+                    {
+                        mainResult = _jsonSerializer.DeserializeFromStream<CompleteMovieData>(json);
+                    }
                 }
             }
             catch (HttpException ex)
@@ -389,7 +389,7 @@ namespace MediaBrowser.Providers.Movies
                     url += "&include_image_language=" + GetImageLanguagesParam(language);
                 }
 
-                using (var json = await GetMovieDbResponse(new HttpRequestOptions
+                using (var response = await GetMovieDbResponse(new HttpRequestOptions
                 {
                     Url = url,
                     CancellationToken = cancellationToken,
@@ -399,9 +399,12 @@ namespace MediaBrowser.Providers.Movies
 
                 }).ConfigureAwait(false))
                 {
-                    var englishResult = _jsonSerializer.DeserializeFromStream<CompleteMovieData>(json);
+                    using (var json = response.Content)
+                    {
+                        var englishResult = _jsonSerializer.DeserializeFromStream<CompleteMovieData>(json);
 
-                    mainResult.overview = englishResult.overview;
+                        mainResult.overview = englishResult.overview;
+                    }
                 }
             }
 
@@ -415,7 +418,7 @@ namespace MediaBrowser.Providers.Movies
         /// <summary>
         /// Gets the movie db response.
         /// </summary>
-        internal async Task<Stream> GetMovieDbResponse(HttpRequestOptions options)
+        internal async Task<HttpResponseInfo> GetMovieDbResponse(HttpRequestOptions options)
         {
             var delayTicks = (requestIntervalMs * 10000) - (DateTime.UtcNow.Ticks - _lastRequestTicks);
             var delayMs = Math.Min(delayTicks / 10000, requestIntervalMs);
@@ -431,12 +434,7 @@ namespace MediaBrowser.Providers.Movies
             options.BufferContent = true;
             options.UserAgent = "Emby/" + _appHost.ApplicationVersion;
 
-            return await _httpClient.Get(options).ConfigureAwait(false);
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
+            return await _httpClient.SendAsync(options, "GET").ConfigureAwait(false);
         }
 
         /// <summary>
@@ -642,8 +640,7 @@ namespace MediaBrowser.Providers.Movies
         {
             get
             {
-                // After Omdb
-                return 1;
+                return 0;
             }
         }
 

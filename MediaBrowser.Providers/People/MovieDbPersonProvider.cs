@@ -36,10 +36,6 @@ namespace MediaBrowser.Providers.People
         private readonly IHttpClient _httpClient;
         private readonly ILogger _logger;
 
-        private int _requestCount;
-        private readonly object _requestCountLock = new object();
-        private DateTime _lastRequestCountReset;
-
         public MovieDbPersonProvider(IFileSystem fileSystem, IServerConfigurationManager configurationManager, IJsonSerializer jsonSerializer, IHttpClient httpClient, ILogger logger)
         {
             _fileSystem = fileSystem;
@@ -61,7 +57,7 @@ namespace MediaBrowser.Providers.People
 
             var tmdbSettings = await MovieDbProvider.Current.GetTmdbSettings(cancellationToken).ConfigureAwait(false);
 
-            var tmdbImageUrl = tmdbSettings.images.secure_base_url + "original";
+            var tmdbImageUrl = tmdbSettings.images.GetImageUrl("original");
 
             if (!string.IsNullOrEmpty(tmdbId))
             {
@@ -89,31 +85,13 @@ namespace MediaBrowser.Providers.People
 
             if (searchInfo.IsAutomated)
             {
-                lock (_requestCountLock)
-                {
-                    if ((DateTime.UtcNow - _lastRequestCountReset).TotalHours >= 1)
-                    {
-                        _requestCount = 0;
-                        _lastRequestCountReset = DateTime.UtcNow;
-                    }
-
-                    var requestCount = _requestCount;
-
-                    if (requestCount >= 40)
-                    {
-                        //_logger.Debug("Throttling Tmdb people");
-
-                        // This needs to be throttled
-                        return new List<RemoteSearchResult>();
-                    }
-
-                    _requestCount = requestCount + 1;
-                }
+                // Don't hammer moviedb searching by name
+                return new List<RemoteSearchResult>();
             }
 
-            var url = string.Format(@"https://api.themoviedb.org/3/search/person?api_key={1}&query={0}", WebUtility.UrlEncode(searchInfo.Name), MovieDbProvider.ApiKey);
+            var url = string.Format(MovieDbProvider.BaseMovieDbUrl + @"3/search/person?api_key={1}&query={0}", WebUtility.UrlEncode(searchInfo.Name), MovieDbProvider.ApiKey);
 
-            using (var json = await MovieDbProvider.Current.GetMovieDbResponse(new HttpRequestOptions
+            using (var response = await MovieDbProvider.Current.GetMovieDbResponse(new HttpRequestOptions
             {
                 Url = url,
                 CancellationToken = cancellationToken,
@@ -121,10 +99,13 @@ namespace MediaBrowser.Providers.People
 
             }).ConfigureAwait(false))
             {
-                var result = _jsonSerializer.DeserializeFromStream<PersonSearchResults>(json) ??
-                             new PersonSearchResults();
+                using (var json = response.Content)
+                {
+                    var result = _jsonSerializer.DeserializeFromStream<PersonSearchResults>(json) ??
+                                 new PersonSearchResults();
 
-                return result.Results.Select(i => GetSearchResult(i, tmdbImageUrl));
+                    return result.Results.Select(i => GetSearchResult(i, tmdbImageUrl));
+                }
             }
         }
 
@@ -179,7 +160,10 @@ namespace MediaBrowser.Providers.People
                 var item = new Person();
                 result.HasMetadata = true;
 
-                item.Name = info.name;
+                // Take name from incoming info, don't rename the person
+                // TODO: This should go in PersonMetadataService, not each person provider
+                item.Name = id.Name;
+
                 item.HomePageUrl = info.homepage;
 
                 if (!string.IsNullOrWhiteSpace(info.place_of_birth))
@@ -240,9 +224,9 @@ namespace MediaBrowser.Providers.People
                 return;
             }
 
-            var url = string.Format(@"https://api.themoviedb.org/3/person/{1}?api_key={0}&append_to_response=credits,images,external_ids", MovieDbProvider.ApiKey, id);
+            var url = string.Format(MovieDbProvider.BaseMovieDbUrl + @"3/person/{1}?api_key={0}&append_to_response=credits,images,external_ids", MovieDbProvider.ApiKey, id);
 
-            using (var json = await MovieDbProvider.Current.GetMovieDbResponse(new HttpRequestOptions
+            using (var response = await MovieDbProvider.Current.GetMovieDbResponse(new HttpRequestOptions
             {
                 Url = url,
                 CancellationToken = cancellationToken,
@@ -250,11 +234,14 @@ namespace MediaBrowser.Providers.People
 
             }).ConfigureAwait(false))
             {
-                _fileSystem.CreateDirectory(_fileSystem.GetDirectoryName(dataFilePath));
-
-                using (var fs = _fileSystem.GetFileStream(dataFilePath, FileOpenMode.Create, FileAccessMode.Write, FileShareMode.Read, true))
+                using (var json = response.Content)
                 {
-                    await json.CopyToAsync(fs).ConfigureAwait(false);
+                    _fileSystem.CreateDirectory(_fileSystem.GetDirectoryName(dataFilePath));
+
+                    using (var fs = _fileSystem.GetFileStream(dataFilePath, FileOpenMode.Create, FileAccessMode.Write, FileShareMode.Read, true))
+                    {
+                        await json.CopyToAsync(fs).ConfigureAwait(false);
+                    }
                 }
             }
         }

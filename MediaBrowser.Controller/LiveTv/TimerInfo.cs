@@ -10,7 +10,12 @@ namespace MediaBrowser.Controller.LiveTv
         {
             Genres = new List<string>();
             KeepUntil = KeepUntil.UntilDeleted;
+            ProviderIds = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            SeriesProviderIds = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
+
+        public Dictionary<string, string> ProviderIds { get; set; }
+        public Dictionary<string, string> SeriesProviderIds { get; set; }
 
         /// <summary>
         /// Id of the recording.
@@ -109,6 +114,9 @@ namespace MediaBrowser.Controller.LiveTv
         public bool IsKids { get; set; }
         public bool IsSports { get; set; }
         public bool IsNews { get; set; }
+        public bool IsSeries { get; set; }
+        public bool IsLive { get; set; }
+        public bool IsPremiere { get; set; }
         public int? ProductionYear { get; set; }
         public string EpisodeTitle { get; set; }
         public DateTime? OriginalAirDate { get; set; }

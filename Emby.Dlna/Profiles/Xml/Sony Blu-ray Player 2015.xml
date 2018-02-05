@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<Profile xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<Profile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <Name>Sony Blu-ray Player 2015</Name>
   <Identification>
     <ModelNumber>BDP-2015</ModelNumber>
@@ -24,8 +24,8 @@
   <MaxAlbumArtHeight>480</MaxAlbumArtHeight>
   <MaxIconWidth>48</MaxIconWidth>
   <MaxIconHeight>48</MaxIconHeight>
-  <MaxStreamingBitrate>40000000</MaxStreamingBitrate>
-  <MaxStaticBitrate>40000000</MaxStaticBitrate>
+  <MaxStreamingBitrate>140000000</MaxStreamingBitrate>
+  <MaxStaticBitrate>140000000</MaxStaticBitrate>
   <MusicStreamingTranscodingBitrate>192000</MusicStreamingTranscodingBitrate>
   <MaxStaticMusicBitrate xsi:nil="true" />
   <XDlnaDoc>DMS-1.50</XDlnaDoc>

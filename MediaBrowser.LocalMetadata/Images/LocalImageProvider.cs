@@ -7,9 +7,9 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-
 using MediaBrowser.Controller.IO;
 using MediaBrowser.Model.IO;
+using MediaBrowser.Controller.Entities.Movies;
 
 namespace MediaBrowser.LocalMetadata.Images
 {
@@ -32,7 +32,7 @@ namespace MediaBrowser.LocalMetadata.Images
             get { return 0; }
         }
 
-        public bool Supports(IHasMetadata item)
+        public bool Supports(BaseItem item)
         {
             if (item.SupportsLocalMetadata)
             {
@@ -63,7 +63,7 @@ namespace MediaBrowser.LocalMetadata.Images
             return false;
         }
 
-        private IEnumerable<FileSystemMetadata> GetFiles(IHasMetadata item, bool includeDirectories, IDirectoryService directoryService)
+        private IEnumerable<FileSystemMetadata> GetFiles(BaseItem item, bool includeDirectories, IDirectoryService directoryService)
         {
             if (item.LocationType != LocationType.FileSystem)
             {
@@ -85,7 +85,7 @@ namespace MediaBrowser.LocalMetadata.Images
                 .OrderBy(i => BaseItem.SupportedImageExtensionsList.IndexOf(i.Extension ?? string.Empty));
         }
 
-        public List<LocalImageInfo> GetImages(IHasMetadata item, IDirectoryService directoryService)
+        public List<LocalImageInfo> GetImages(BaseItem item, IDirectoryService directoryService)
         {
             var files = GetFiles(item, true, directoryService).ToList();
 
@@ -96,12 +96,12 @@ namespace MediaBrowser.LocalMetadata.Images
             return list;
         }
 
-        public List<LocalImageInfo> GetImages(IHasMetadata item, string path, bool isPathInMediaFolder, IDirectoryService directoryService)
+        public List<LocalImageInfo> GetImages(BaseItem item, string path, bool isPathInMediaFolder, IDirectoryService directoryService)
         {
             return GetImages(item, new[] { path }, isPathInMediaFolder, directoryService);
         }
 
-        public List<LocalImageInfo> GetImages(IHasMetadata item, IEnumerable<string> paths, bool arePathsInMediaFolders, IDirectoryService directoryService)
+        public List<LocalImageInfo> GetImages(BaseItem item, IEnumerable<string> paths, bool arePathsInMediaFolders, IDirectoryService directoryService)
         {
             IEnumerable<FileSystemMetadata> files = paths.SelectMany(i => _fileSystem.GetFiles(i, BaseItem.SupportedImageExtensions, true, false));
 
@@ -115,7 +115,7 @@ namespace MediaBrowser.LocalMetadata.Images
             return list;
         }
 
-        private void PopulateImages(IHasMetadata item, List<LocalImageInfo> images, List<FileSystemMetadata> files, bool supportParentSeriesFiles, IDirectoryService directoryService)
+        private void PopulateImages(BaseItem item, List<LocalImageInfo> images, List<FileSystemMetadata> files, bool supportParentSeriesFiles, IDirectoryService directoryService)
         {
             if (supportParentSeriesFiles)
             {
@@ -132,90 +132,190 @@ namespace MediaBrowser.LocalMetadata.Images
 
             PopulatePrimaryImages(item, images, files, imagePrefix, isInMixedFolder);
 
-            AddImage(files, images, "logo", imagePrefix, isInMixedFolder, ImageType.Logo);
-            AddImage(files, images, "clearart", imagePrefix, isInMixedFolder, ImageType.Art);
+            var added = false;
+            var isEpisode = item is Episode;
+            var isSong = item.GetType() == typeof(Audio);
+            var isGame = item is Game;
+            var isPerson = item is Person;
+
+            // Logo
+            if (!isEpisode && !isSong && !isPerson)
+            {
+                added = AddImage(files, images, "logo", imagePrefix, isInMixedFolder, ImageType.Logo);
+                if (!added)
+                {
+                    added = AddImage(files, images, "clearlogo", imagePrefix, isInMixedFolder, ImageType.Logo);
+                }
+            }
+
+            // Art
+            if (!isEpisode && !isSong && !isPerson)
+            {
+                AddImage(files, images, "clearart", imagePrefix, isInMixedFolder, ImageType.Art);
+            }
 
             // For music albums, prefer cdart before disc
             if (item is MusicAlbum)
             {
-                AddImage(files, images, "cdart", imagePrefix, isInMixedFolder, ImageType.Disc);
-                AddImage(files, images, "disc", imagePrefix, isInMixedFolder, ImageType.Disc);
+                added = AddImage(files, images, "cdart", imagePrefix, isInMixedFolder, ImageType.Disc);
+
+                if (!added)
+                {
+                    added = AddImage(files, images, "disc", imagePrefix, isInMixedFolder, ImageType.Disc);
+                }
             }
-            else
+            else if (isGame || item is Video || item is BoxSet)
             {
-                AddImage(files, images, "disc", imagePrefix, isInMixedFolder, ImageType.Disc);
-                AddImage(files, images, "cdart", imagePrefix, isInMixedFolder, ImageType.Disc);
+                added = AddImage(files, images, "disc", imagePrefix, isInMixedFolder, ImageType.Disc);
+
+                if (!added)
+                {
+                    added = AddImage(files, images, "cdart", imagePrefix, isInMixedFolder, ImageType.Disc);
+                }
+
+                if (!added)
+                {
+                    added = AddImage(files, images, "discart", imagePrefix, isInMixedFolder, ImageType.Disc);
+                }
             }
 
-            AddImage(files, images, "box", imagePrefix, isInMixedFolder, ImageType.Box);
-            AddImage(files, images, "back", imagePrefix, isInMixedFolder, ImageType.BoxRear);
-            AddImage(files, images, "boxrear", imagePrefix, isInMixedFolder, ImageType.BoxRear);
-            AddImage(files, images, "menu", imagePrefix, isInMixedFolder, ImageType.Menu);
+            if (isGame)
+            {
+                AddImage(files, images, "box", imagePrefix, isInMixedFolder, ImageType.Box);
+                AddImage(files, images, "menu", imagePrefix, isInMixedFolder, ImageType.Menu);
+
+                added = AddImage(files, images, "back", imagePrefix, isInMixedFolder, ImageType.BoxRear);
+
+                if (!added)
+                {
+                    added = AddImage(files, images, "boxrear", imagePrefix, isInMixedFolder, ImageType.BoxRear);
+                }
+            }
 
             // Banner
-            AddImage(files, images, "banner", imagePrefix, isInMixedFolder, ImageType.Banner);
+            if (!isEpisode && !isSong && !isPerson)
+            {
+                AddImage(files, images, "banner", imagePrefix, isInMixedFolder, ImageType.Banner);
+            }
 
             // Thumb
-            AddImage(files, images, "landscape", imagePrefix, isInMixedFolder, ImageType.Thumb);
-            AddImage(files, images, "thumb", imagePrefix, isInMixedFolder, ImageType.Thumb);
+            if (!isEpisode && !isSong && !isPerson)
+            {
+                added = AddImage(files, images, "landscape", imagePrefix, isInMixedFolder, ImageType.Thumb);
+                if (!added)
+                {
+                    added = AddImage(files, images, "thumb", imagePrefix, isInMixedFolder, ImageType.Thumb);
+                }
+            }
 
-            PopulateBackdrops(item, images, files, imagePrefix, isInMixedFolder, directoryService);
-            PopulateScreenshots(images, files, imagePrefix, isInMixedFolder);
+            if (!isEpisode && !isSong && !isPerson)
+            {
+                PopulateBackdrops(item, images, files, imagePrefix, isInMixedFolder, directoryService);
+            }
+
+            if (item is IHasScreenshots)
+            {
+                PopulateScreenshots(images, files, imagePrefix, isInMixedFolder);
+            }
         }
 
-        private void PopulatePrimaryImages(IHasMetadata item, List<LocalImageInfo> images, List<FileSystemMetadata> files, string imagePrefix, bool isInMixedFolder)
+        private static readonly string[] CommonImageFileNames = new[]
         {
-            var names = new List<string>
-            {
-                "cover",
-                "default"
-            };
+            "poster",
+            "folder",
+            "cover",
+            "default"
+        };
 
-            if (item is MusicAlbum || item is MusicArtist || item is PhotoAlbum || item is Person)
+        private static readonly string[] MusicImageFileNames = new[]
+        {
+            "folder",
+            "poster",
+            "cover",
+            "default"
+        };
+
+        private static readonly string[] PersonImageFileNames = new[]
+        {
+            "folder",
+            "poster"
+        };
+
+        private static readonly string[] SeriesImageFileNames = new[]
+        {
+            "poster",
+            "folder",
+            "cover",
+            "default",
+            "show"
+        };
+
+        private static readonly string[] VideoImageFileNames = new[]
+        {
+            "poster",
+            "folder",
+            "cover",
+            "default",
+            "movie"
+        };
+
+        private void PopulatePrimaryImages(BaseItem item, List<LocalImageInfo> images, List<FileSystemMetadata> files, string imagePrefix, bool isInMixedFolder)
+        {
+            string[] imageFileNames;
+
+            if (item is MusicAlbum || item is MusicArtist || item is PhotoAlbum)
             {
                 // these prefer folder
-                names.Insert(0, "poster");
-                names.Insert(0, "folder");
+                imageFileNames = MusicImageFileNames;
+            }
+            else if (item is Person)
+            {
+                // these prefer folder
+                imageFileNames = PersonImageFileNames;
+            }
+            else if (item is Series)
+            {
+                imageFileNames = SeriesImageFileNames;
+            }
+            else if (item is Video && !(item is Episode))
+            {
+                imageFileNames = VideoImageFileNames;
             }
             else
             {
-                names.Insert(0, "folder");
-                names.Insert(0, "poster");
-            }
-
-            // Support plex/kodi convention
-            if (item is Series)
-            {
-                names.Add("show");
-            }
-
-            // Support plex/kodi convention
-            if (item is Video && !(item is Episode))
-            {
-                names.Add("movie");
+                imageFileNames = CommonImageFileNames;
             }
 
             var fileNameWithoutExtension = item.FileNameWithoutExtension;
             if (!string.IsNullOrEmpty(fileNameWithoutExtension))
             {
-                AddImage(files, images, fileNameWithoutExtension, ImageType.Primary);
+                if (AddImage(files, images, fileNameWithoutExtension, ImageType.Primary))
+                {
+                    return;
+                }
             }
 
-            foreach (var name in names)
+            foreach (var name in imageFileNames)
             {
-                AddImage(files, images, imagePrefix + name, ImageType.Primary);
+                if (AddImage(files, images, imagePrefix + name, ImageType.Primary))
+                {
+                    return;
+                }
             }
 
             if (!isInMixedFolder)
             {
-                foreach (var name in names)
+                foreach (var name in imageFileNames)
                 {
-                    AddImage(files, images, name, ImageType.Primary);
+                    if (AddImage(files, images, name, ImageType.Primary))
+                    {
+                        return;
+                    }
                 }
             }
         }
 
-        private void PopulateBackdrops(IHasMetadata item, List<LocalImageInfo> images, List<FileSystemMetadata> files, string imagePrefix, bool isInMixedFolder, IDirectoryService directoryService)
+        private void PopulateBackdrops(BaseItem item, List<LocalImageInfo> images, List<FileSystemMetadata> files, string imagePrefix, bool isInMixedFolder, IDirectoryService directoryService)
         {
             if (!string.IsNullOrEmpty(item.Path))
             {

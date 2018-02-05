@@ -7,6 +7,7 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using System.Threading;
 
 namespace Emby.Dlna.PlayTo
 {
@@ -31,14 +32,17 @@ namespace Emby.Dlna.PlayTo
             bool logRequest = true,
             string header = null)
         {
-            var response = await PostSoapDataAsync(NormalizeServiceUrl(baseUrl, service.ControlUrl), "\"" + service.ServiceType + "#" + command + "\"", postData, header, logRequest)
-                .ConfigureAwait(false);
+            var cancellationToken = CancellationToken.None;
 
-            using (var stream = response.Content)
+            using (var response = await PostSoapDataAsync(NormalizeServiceUrl(baseUrl, service.ControlUrl), "\"" + service.ServiceType + "#" + command + "\"", postData, header, logRequest, cancellationToken)
+                .ConfigureAwait(false))
             {
-                using (var reader = new StreamReader(stream, Encoding.UTF8))
+                using (var stream = response.Content)
                 {
-                    return XDocument.Parse(reader.ReadToEnd(), LoadOptions.PreserveWhitespace);
+                    using (var reader = new StreamReader(stream, Encoding.UTF8))
+                    {
+                        return XDocument.Parse(reader.ReadToEnd(), LoadOptions.PreserveWhitespace);
+                    }
                 }
             }
         }
@@ -71,7 +75,10 @@ namespace Emby.Dlna.PlayTo
                 Url = url,
                 UserAgent = USERAGENT,
                 LogErrorResponseBody = true,
-                BufferContent = false
+                BufferContent = false,
+
+                // The periodic requests may keep some devices awake
+                LogRequestAsDebug = true
             };
 
             options.RequestHeaders["HOST"] = ip + ":" + port.ToString(_usCulture);
@@ -79,26 +86,37 @@ namespace Emby.Dlna.PlayTo
             options.RequestHeaders["NT"] = "upnp:event";
             options.RequestHeaders["TIMEOUT"] = "Second-" + timeOut.ToString(_usCulture);
 
-            await _httpClient.SendAsync(options, "SUBSCRIBE").ConfigureAwait(false);
+            using (await _httpClient.SendAsync(options, "SUBSCRIBE").ConfigureAwait(false))
+            {
+
+            }
         }
 
-        public async Task<XDocument> GetDataAsync(string url)
+        public async Task<XDocument> GetDataAsync(string url, CancellationToken cancellationToken)
         {
             var options = new HttpRequestOptions
             {
                 Url = url,
                 UserAgent = USERAGENT,
                 LogErrorResponseBody = true,
-                BufferContent = false
+                BufferContent = false,
+
+                // The periodic requests may keep some devices awake
+                LogRequestAsDebug = true,
+
+                CancellationToken = cancellationToken
             };
 
             options.RequestHeaders["FriendlyName.DLNA.ORG"] = FriendlyName;
 
-            using (var stream = await _httpClient.Get(options).ConfigureAwait(false))
+            using (var response = await _httpClient.SendAsync(options, "GET").ConfigureAwait(false))
             {
-                using (var reader = new StreamReader(stream, Encoding.UTF8))
+                using (var stream = response.Content)
                 {
-                    return XDocument.Parse(reader.ReadToEnd(), LoadOptions.PreserveWhitespace);
+                    using (var reader = new StreamReader(stream, Encoding.UTF8))
+                    {
+                        return XDocument.Parse(reader.ReadToEnd(), LoadOptions.PreserveWhitespace);
+                    }
                 }
             }
         }
@@ -107,7 +125,8 @@ namespace Emby.Dlna.PlayTo
             string soapAction, 
             string postData, 
             string header,
-            bool logRequest)
+            bool logRequest,
+            CancellationToken cancellationToken)
         {
             if (!soapAction.StartsWith("\""))
                 soapAction = "\"" + soapAction + "\"";
@@ -118,7 +137,12 @@ namespace Emby.Dlna.PlayTo
                 UserAgent = USERAGENT,
                 LogRequest = logRequest || _config.GetDlnaConfiguration().EnableDebugLog,
                 LogErrorResponseBody = true,
-                BufferContent = false
+                BufferContent = false,
+
+                // The periodic requests may keep some devices awake
+                LogRequestAsDebug = true,
+
+                CancellationToken = cancellationToken
             };
 
             options.RequestHeaders["SOAPAction"] = soapAction;
@@ -130,7 +154,8 @@ namespace Emby.Dlna.PlayTo
                 options.RequestHeaders["contentFeatures.dlna.org"] = header;
             }
 
-            options.RequestContentType = "text/xml; charset=\"utf-8\"";
+            options.RequestContentType = "text/xml";
+            options.AppendCharsetToMimeType = true;
             options.RequestContent = postData;
 
             return _httpClient.Post(options);

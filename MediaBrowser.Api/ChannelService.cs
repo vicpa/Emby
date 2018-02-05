@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using MediaBrowser.Api.UserLibrary;
 using MediaBrowser.Model.Services;
 
 namespace MediaBrowser.Api
@@ -55,7 +56,7 @@ namespace MediaBrowser.Api
     }
 
     [Route("/Channels/Features", "GET", Summary = "Gets features for a channel")]
-    public class GetAllChannelFeatures : IReturn<List<ChannelFeatures>>
+    public class GetAllChannelFeatures : IReturn<ChannelFeatures[]>
     {
     }
 
@@ -90,7 +91,7 @@ namespace MediaBrowser.Api
         public int? Limit { get; set; }
 
         [ApiMember(Name = "SortOrder", Description = "Sort Order - Ascending,Descending", IsRequired = false, DataType = "string", ParameterType = "query", Verb = "GET")]
-        public SortOrder? SortOrder { get; set; }
+        public string SortOrder { get; set; }
 
         [ApiMember(Name = "Filters", Description = "Optional. Specify additional filters to apply. This allows multiple, comma delimeted. Options: IsFolder, IsNotFolder, IsUnplayed, IsPlayed, IsFavorite, IsResumable, Likes, Dislikes", IsRequired = false, DataType = "string", ParameterType = "query", Verb = "GET", AllowMultiple = true)]
         public string Filters { get; set; }
@@ -100,7 +101,7 @@ namespace MediaBrowser.Api
 
         [ApiMember(Name = "Fields", Description = "Optional. Specify additional fields of information to return in the output. This allows multiple, comma delimeted. Options: Budget, Chapters, DateCreated, Genres, HomePageUrl, IndexOptions, MediaStreams, Overview, ParentId, Path, People, ProviderIds, PrimaryImageAspectRatio, Revenue, SortName, Studios, Taglines", IsRequired = false, DataType = "string", ParameterType = "query", Verb = "GET", AllowMultiple = true)]
         public string Fields { get; set; }
-        
+
         /// <summary>
         /// Gets the filters.
         /// </summary>
@@ -115,6 +116,15 @@ namespace MediaBrowser.Api
             }
 
             return val.Split(',').Select(v => (ItemFilter)Enum.Parse(typeof(ItemFilter), v, true));
+        }
+
+        /// <summary>
+        /// Gets the order by.
+        /// </summary>
+        /// <returns>IEnumerable{ItemSortBy}.</returns>
+        public Tuple<string, SortOrder>[] GetOrderBy()
+        {
+            return BaseItemsRequest.GetOrderBy(SortBy, SortOrder);
         }
     }
 
@@ -150,7 +160,7 @@ namespace MediaBrowser.Api
 
         [ApiMember(Name = "ChannelIds", Description = "Optional. Specify one or more channel id's, comma delimeted.", IsRequired = false, DataType = "string", ParameterType = "query", Verb = "GET", AllowMultiple = true)]
         public string ChannelIds { get; set; }
-        
+
         /// <summary>
         /// Gets the filters.
         /// </summary>
@@ -167,7 +177,7 @@ namespace MediaBrowser.Api
             return val.Split(',').Select(v => (ItemFilter)Enum.Parse(typeof(ItemFilter), v, true));
         }
     }
-    
+
     [Route("/Channels/Folder", "GET", Summary = "Gets the users channel folder, along with configured images")]
     public class GetChannelFolder : IReturn<BaseItemDto>
     {
@@ -187,7 +197,7 @@ namespace MediaBrowser.Api
 
         public object Get(GetAllChannelFeatures request)
         {
-            var result = _channelManager.GetAllChannelFeatures().ToList();
+            var result = _channelManager.GetAllChannelFeatures();
 
             return ToOptimizedResult(result);
         }
@@ -199,9 +209,9 @@ namespace MediaBrowser.Api
             return ToOptimizedResult(result);
         }
 
-        public async Task<object> Get(GetChannelFolder request)
+        public object Get(GetChannelFolder request)
         {
-            return ToOptimizedResult(await _channelManager.GetChannelFolder(request.UserId, CancellationToken.None).ConfigureAwait(false));
+            return ToOptimizedResult(_channelManager.GetChannelFolder(request.UserId, CancellationToken.None));
         }
 
         public async Task<object> Get(GetChannels request)
@@ -228,10 +238,9 @@ namespace MediaBrowser.Api
                 UserId = request.UserId,
                 ChannelId = request.Id,
                 FolderId = request.FolderId,
-                SortOrder = request.SortOrder,
-                SortBy = (request.SortBy ?? string.Empty).Split(',').Where(i => !string.IsNullOrWhiteSpace(i)).ToArray(),
+                OrderBy = request.GetOrderBy(),
                 Filters = request.GetFilters().ToArray(),
-                Fields = request.GetItemFields().ToArray()
+                Fields = request.GetItemFields()
 
             }, CancellationToken.None).ConfigureAwait(false);
 
@@ -247,7 +256,7 @@ namespace MediaBrowser.Api
                 ChannelIds = (request.ChannelIds ?? string.Empty).Split(',').Where(i => !string.IsNullOrWhiteSpace(i)).ToArray(),
                 UserId = request.UserId,
                 Filters = request.GetFilters().ToArray(),
-                Fields = request.GetItemFields().ToList()
+                Fields = request.GetItemFields()
 
             }, CancellationToken.None).ConfigureAwait(false);
 

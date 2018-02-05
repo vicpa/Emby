@@ -26,19 +26,9 @@ namespace MediaBrowser.Model.Dlna
             ApplyConditions = new ProfileCondition[] { };
         }
 
-        private static List<string> SplitValue(string value)
+        public string[] GetCodecs()
         {
-            List<string> list = new List<string>();
-            foreach (string i in (value ?? string.Empty).Split(','))
-            {
-                if (!string.IsNullOrEmpty(i)) list.Add(i);
-            }
-            return list;
-        }
-
-        public List<string> GetCodecs()
-        {
-            return SplitValue(Codec);
+            return ContainerProfile.SplitValue(Codec);
         }
 
         private bool ContainsContainer(string container)
@@ -46,17 +36,33 @@ namespace MediaBrowser.Model.Dlna
             return ContainerProfile.ContainsContainer(Container, container);
         }
 
-        public bool ContainsCodec(string codec, string container)
+        public bool ContainsAnyCodec(string codec, string container)
+        {
+            return ContainsAnyCodec(ContainerProfile.SplitValue(codec), container);
+        }
+
+        public bool ContainsAnyCodec(string[] codec, string container)
         {
             if (!ContainsContainer(container))
             {
                 return false;
             }
 
-            List<string> codecs = GetCodecs();
+            var codecs = GetCodecs();
+            if (codecs.Length == 0)
+            {
+                return true;
+            }
 
-            return codecs.Count == 0 || ListHelper.ContainsIgnoreCase(codecs, SplitValue(codec)[0]);
-            //return codecs.Count == 0 || SplitValue(codec).Any(i => ListHelper.ContainsIgnoreCase(codecs, i));
+            foreach (var val in codec)
+            {
+                if (ListHelper.ContainsIgnoreCase(codecs, val))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

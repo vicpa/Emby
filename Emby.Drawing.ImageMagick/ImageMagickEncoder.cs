@@ -7,13 +7,12 @@ using MediaBrowser.Model.Drawing;
 using MediaBrowser.Model.Logging;
 using System;
 using System.IO;
-using System.Linq;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Model.System;
 
 namespace Emby.Drawing.ImageMagick
 {
-    public class ImageMagickEncoder : IImageEncoder
+    public class ImageMagickEncoder : IImageEncoder, IDisposable
     {
         private readonly ILogger _logger;
         private readonly IApplicationPaths _appPaths;
@@ -39,7 +38,8 @@ namespace Emby.Drawing.ImageMagick
                 // Some common file name extensions for RAW picture files include: .cr2, .crw, .dng, .nef, .orf, .rw2, .pef, .arw, .sr2, .srf, and .tif.
                 return new[]
                 {
-                    "tiff", 
+                    "tiff",
+                    "tif",
                     "jpeg", 
                     "jpg", 
                     "png", 
@@ -148,9 +148,8 @@ namespace Emby.Drawing.ImageMagick
                     }
 
                     var originalImageSize = new ImageSize(originalImage.CurrentImage.Width, originalImage.CurrentImage.Height);
-                    ImageHelper.SaveImageSize(inputPath, dateModified, originalImageSize);
 
-                    if (!options.CropWhiteSpace && options.HasDefaultOptions(inputPath, originalImageSize))
+                    if (!options.CropWhiteSpace && options.HasDefaultOptions(inputPath, originalImageSize) && !autoOrient)
                     {
                         // Just spit out the original file if all the options are default
                         return inputPath;
@@ -174,6 +173,8 @@ namespace Emby.Drawing.ImageMagick
                     originalImage.CurrentImage.CompressionQuality = quality;
                     originalImage.CurrentImage.StripImage();
 
+                    _fileSystem.CreateDirectory(_fileSystem.GetDirectoryName(outputPath));
+
                     originalImage.SaveImage(outputPath);
                 }
             }
@@ -182,7 +183,6 @@ namespace Emby.Drawing.ImageMagick
                 using (var originalImage = new MagickWand(inputPath))
                 {
                     var originalImageSize = new ImageSize(originalImage.CurrentImage.Width, originalImage.CurrentImage.Height);
-                    ImageHelper.SaveImageSize(inputPath, dateModified, originalImageSize);
 
                     var newImageSize = ImageHelper.GetNewImageSize(options, originalImageSize);
 
@@ -306,15 +306,15 @@ namespace Emby.Drawing.ImageMagick
 
             if (ratio >= 1.4)
             {
-                new StripCollageBuilder(_appPaths, _fileSystem).BuildThumbCollage(options.InputPaths.ToList(), options.OutputPath, options.Width, options.Height);
+                new StripCollageBuilder(_appPaths, _fileSystem).BuildThumbCollage(options.InputPaths, options.OutputPath, options.Width, options.Height);
             }
             else if (ratio >= .9)
             {
-                new StripCollageBuilder(_appPaths, _fileSystem).BuildSquareCollage(options.InputPaths.ToList(), options.OutputPath, options.Width, options.Height);
+                new StripCollageBuilder(_appPaths, _fileSystem).BuildSquareCollage(options.InputPaths, options.OutputPath, options.Width, options.Height);
             }
             else
             {
-                new StripCollageBuilder(_appPaths, _fileSystem).BuildPosterCollage(options.InputPaths.ToList(), options.OutputPath, options.Width, options.Height);
+                new StripCollageBuilder(_appPaths, _fileSystem).BuildPosterCollage(options.InputPaths, options.OutputPath, options.Width, options.Height);
             }
         }
 
@@ -328,6 +328,7 @@ namespace Emby.Drawing.ImageMagick
         {
             _disposed = true;
             Wand.CloseEnvironment();
+            GC.SuppressFinalize(this);
         }
 
         private void CheckDisposed()
@@ -342,13 +343,6 @@ namespace Emby.Drawing.ImageMagick
         {
             get
             {
-                // too heavy. seeing crashes on RPI.
-                if (_environment.SystemArchitecture == Architecture.Arm ||
-                    _environment.SystemArchitecture == Architecture.Arm64)
-                {
-                    return false;
-                }
-
                 return true;
             }
         }

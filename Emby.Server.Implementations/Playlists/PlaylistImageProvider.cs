@@ -1,4 +1,5 @@
-﻿using MediaBrowser.Common.Configuration;
+﻿using System;
+using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller.Drawing;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Audio;
@@ -27,7 +28,7 @@ namespace Emby.Server.Implementations.Playlists
         {
         }
 
-        protected override List<BaseItem> GetItemsWithImages(IHasMetadata item)
+        protected override List<BaseItem> GetItemsWithImages(BaseItem item)
         {
             var playlist = (Playlist)item;
 
@@ -52,7 +53,7 @@ namespace Emby.Server.Implementations.Playlists
                         return subItem;
                     }
 
-                    var parent = subItem.GetParent();
+                    var parent = subItem.IsOwnedItem ? subItem.GetOwner() : subItem.GetParent();
 
                     if (parent != null && parent.HasImage(ImageType.Primary))
                     {
@@ -80,13 +81,13 @@ namespace Emby.Server.Implementations.Playlists
             _libraryManager = libraryManager;
         }
 
-        protected override List<BaseItem> GetItemsWithImages(IHasMetadata item)
+        protected override List<BaseItem> GetItemsWithImages(BaseItem item)
         {
             var items = _libraryManager.GetItemList(new InternalItemsQuery
             {
                 Genres = new[] { item.Name },
                 IncludeItemTypes = new[] { typeof(MusicAlbum).Name, typeof(MusicVideo).Name, typeof(Audio).Name },
-                SortBy = new[] { ItemSortBy.Random },
+                OrderBy = new[] { new Tuple<string, SortOrder>(ItemSortBy.Random, SortOrder.Ascending) },
                 Limit = 4,
                 Recursive = true,
                 ImageTypes = new[] { ImageType.Primary },
@@ -112,18 +113,17 @@ namespace Emby.Server.Implementations.Playlists
             _libraryManager = libraryManager;
         }
 
-        protected override List<BaseItem> GetItemsWithImages(IHasMetadata item)
+        protected override List<BaseItem> GetItemsWithImages(BaseItem item)
         {
             var items = _libraryManager.GetItemList(new InternalItemsQuery
             {
                 Genres = new[] { item.Name },
                 IncludeItemTypes = new[] { typeof(Series).Name, typeof(Movie).Name },
-                SortBy = new[] { ItemSortBy.Random },
+                OrderBy = new[] { new Tuple<string, SortOrder>(ItemSortBy.Random, SortOrder.Ascending) },
                 Limit = 4,
                 Recursive = true,
                 ImageTypes = new[] { ImageType.Primary },
                 DtoOptions = new DtoOptions(false)
-
             });
 
             return GetFinalItems(items);

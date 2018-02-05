@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using MediaBrowser.Model.Net;
@@ -30,7 +31,6 @@ namespace SocketHttpListener.Net
         string[] user_languages;
         HttpListenerContext context;
         bool is_chunked;
-        bool ka_set;
         bool? _keepAlive;
 
         private readonly ITextEncoding _textEncoding;
@@ -247,6 +247,14 @@ namespace SocketHttpListener.Net
             return str.Trim();
         }
 
+        private string GetValue(string nameAndValue, string separator)
+        {
+            return (nameAndValue != null && nameAndValue.Length > 0) &&
+                   (separator != null && separator.Length > 0)
+                   ? nameAndValue.GetValueInternal(separator)
+                   : null;
+        }
+
         internal void AddHeader(string header)
         {
             int colon = header.IndexOf(':');
@@ -292,7 +300,7 @@ namespace SocketHttpListener.Net
                             var tmp = content.Trim();
                             if (tmp.StartsWith("charset"))
                             {
-                                var charset = tmp.GetValue("=");
+                                var charset = GetValue(tmp, "=");
                                 if (charset != null && charset.Length > 0)
                                 {
                                     try
@@ -403,7 +411,7 @@ namespace SocketHttpListener.Net
                 try
                 {
                     var task = InputStream.ReadAsync(bytes, 0, length);
-                    var result = Task.WaitAll(new [] { task }, 1000);
+                    var result = Task.WaitAll(new[] { task }, 1000);
                     if (!result)
                     {
                         return false;
@@ -413,7 +421,7 @@ namespace SocketHttpListener.Net
                         return true;
                     }
                 }
-                catch (ObjectDisposedException e)
+                catch (ObjectDisposedException)
                 {
                     input_stream = null;
                     return true;
@@ -513,7 +521,14 @@ namespace SocketHttpListener.Net
 
         public bool IsLocal
         {
-            get { return RemoteEndPoint.IpAddress.Equals(IpAddressInfo.Loopback) || RemoteEndPoint.IpAddress.Equals(IpAddressInfo.IPv6Loopback) || LocalEndPoint.IpAddress.Equals(RemoteEndPoint.IpAddress); }
+            get
+            {
+                var remoteEndPoint = RemoteEndPoint;
+
+                return remoteEndPoint.Address.Equals(IPAddress.Loopback) ||
+                       remoteEndPoint.Address.Equals(IPAddress.IPv6Loopback) ||
+                        LocalEndPoint.Address.Equals(remoteEndPoint.Address);
+            }
         }
 
         public bool IsSecureConnection
@@ -557,7 +572,7 @@ namespace SocketHttpListener.Net
             }
         }
 
-        public IpEndPointInfo LocalEndPoint
+        public IPEndPoint LocalEndPoint
         {
             get { return context.Connection.LocalEndPoint; }
         }
@@ -577,7 +592,7 @@ namespace SocketHttpListener.Net
             get { return raw_url; }
         }
 
-        public IpEndPointInfo RemoteEndPoint
+        public IPEndPoint RemoteEndPoint
         {
             get { return context.Connection.RemoteEndPoint; }
         }
@@ -650,11 +665,6 @@ namespace SocketHttpListener.Net
 
                 return _websocketRequest;
             }
-        }
-
-        public Task<ICertificate> GetClientCertificateAsync()
-        {
-            return Task.FromResult<ICertificate>(null);
         }
     }
 }

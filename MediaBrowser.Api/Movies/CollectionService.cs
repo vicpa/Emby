@@ -3,9 +3,6 @@ using MediaBrowser.Controller.Dto;
 using MediaBrowser.Controller.Net;
 using MediaBrowser.Model.Collections;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using MediaBrowser.Model.Services;
 
 namespace MediaBrowser.Api.Movies
@@ -60,21 +57,21 @@ namespace MediaBrowser.Api.Movies
             _authContext = authContext;
         }
 
-        public async Task<object> Post(CreateCollection request)
+        public object Post(CreateCollection request)
         {
             var userId = _authContext.GetAuthorizationInfo(Request).UserId;
 
             var parentId = string.IsNullOrWhiteSpace(request.ParentId) ? (Guid?)null : new Guid(request.ParentId);
 
-            var item = await _collectionManager.CreateCollection(new CollectionCreationOptions
+            var item = _collectionManager.CreateCollection(new CollectionCreationOptions
             {
                 IsLocked = request.IsLocked,
                 Name = request.Name,
                 ParentId = parentId,
-                ItemIdList = (request.Ids ?? string.Empty).Split(',').Where(i => !string.IsNullOrWhiteSpace(i)).Select(i => new Guid(i)).ToList(),
-                UserIds = new List<Guid> { new Guid(userId) }
+                ItemIdList = SplitValue(request.Ids, ','),
+                UserIds = new string[] { userId }
 
-            }).ConfigureAwait(false);
+            });
 
             var dtoOptions = GetDtoOptions(_authContext, request);
 
@@ -88,16 +85,12 @@ namespace MediaBrowser.Api.Movies
 
         public void Post(AddToCollection request)
         {
-            var task = _collectionManager.AddToCollection(new Guid(request.Id), request.Ids.Split(',').Select(i => new Guid(i)));
-
-            Task.WaitAll(task);
+            _collectionManager.AddToCollection(new Guid(request.Id), SplitValue(request.Ids, ','));
         }
 
         public void Delete(RemoveFromCollection request)
         {
-            var task = _collectionManager.RemoveFromCollection(new Guid(request.Id), request.Ids.Split(',').Select(i => new Guid(i)));
-
-            Task.WaitAll(task);
+            _collectionManager.RemoveFromCollection(new Guid(request.Id), SplitValue(request.Ids, ','));
         }
     }
 }

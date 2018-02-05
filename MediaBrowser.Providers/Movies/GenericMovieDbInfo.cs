@@ -130,8 +130,7 @@ namespace MediaBrowser.Providers.Movies
 
             movie.OriginalTitle = movieData.GetOriginalTitle();
 
-            // Bug in Mono: WebUtility.HtmlDecode should return null if the string is null but in Mono it generate an System.ArgumentNullException.
-            movie.Overview = movieData.overview != null ? WebUtility.HtmlDecode(movieData.overview) : null;
+            movie.Overview = string.IsNullOrWhiteSpace(movieData.overview) ? null : WebUtility.HtmlDecode(movieData.overview);
             movie.Overview = movie.Overview != null ? movie.Overview.Replace("\n\n", "\n") : null;
 
             movie.HomePageUrl = movieData.homepage;
@@ -175,7 +174,6 @@ namespace MediaBrowser.Providers.Movies
 
             //movie.VoteCount = movieData.vote_count;
 
-            //release date and certification are retrieved based on configured country and we fall back on US if not there and to minimun release date if still no match
             if (movieData.releases != null && movieData.releases.countries != null)
             {
                 var releases = movieData.releases.countries.Where(i => !string.IsNullOrWhiteSpace(i.certification)).ToList();
@@ -226,7 +224,7 @@ namespace MediaBrowser.Providers.Movies
             }
 
             resultItem.ResetPeople();
-            var tmdbImageUrl = settings.images.secure_base_url + "original";
+            var tmdbImageUrl = settings.images.GetImageUrl("original");
 
             //Actors, Directors, Writers - all in People
             //actors come from cast
@@ -262,7 +260,7 @@ namespace MediaBrowser.Providers.Movies
                 var keepTypes = new[]
                 {
                     PersonType.Director,
-                    PersonType.Writer,
+                    //PersonType.Writer,
                     //PersonType.Producer
                 };
 

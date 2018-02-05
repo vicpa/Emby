@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using Emby.Server.Implementations.Data;
 using MediaBrowser.Controller;
 using MediaBrowser.Model.Activity;
@@ -11,27 +10,46 @@ using MediaBrowser.Model.Logging;
 using MediaBrowser.Model.Querying;
 using SQLitePCL.pretty;
 using MediaBrowser.Model.Extensions;
+using MediaBrowser.Model.IO;
 
 namespace Emby.Server.Implementations.Activity
 {
     public class ActivityRepository : BaseSqliteRepository, IActivityRepository
     {
         private readonly CultureInfo _usCulture = new CultureInfo("en-US");
+        protected IFileSystem FileSystem { get; private set; }
 
-        public ActivityRepository(ILogger logger, IServerApplicationPaths appPaths)
+        public ActivityRepository(ILogger logger, IServerApplicationPaths appPaths, IFileSystem fileSystem)
             : base(logger)
         {
             DbFilePath = Path.Combine(appPaths.DataPath, "activitylog.db");
+            FileSystem = fileSystem;
         }
 
         public void Initialize()
+        {
+            try
+            {
+                InitializeInternal();
+            }
+            catch (Exception ex)
+            {
+                Logger.ErrorException("Error loading database file. Will reset and retry.", ex);
+
+                FileSystem.DeleteFile(DbFilePath);
+
+                InitializeInternal();
+            }
+        }
+
+        private void InitializeInternal()
         {
             using (var connection = CreateConnection())
             {
                 RunDefaultInitialization(connection);
 
                 string[] queries = {
-                    "create table if not exists ActivityLogEntries (Id GUID PRIMARY KEY, Name TEXT, Overview TEXT, ShortOverview TEXT, Type TEXT, ItemId TEXT, UserId TEXT, DateCreated DATETIME, LogSeverity TEXT)",
+                    "create table if not exists ActivityLogEntries (Id GUID PRIMARY KEY NOT NULL, Name TEXT NOT NULL, Overview TEXT, ShortOverview TEXT, Type TEXT NOT NULL, ItemId TEXT, UserId TEXT, DateCreated DATETIME NOT NULL, LogSeverity TEXT NOT NULL)",
                     "create index if not exists idx_ActivityLogEntries on ActivityLogEntries(Id)"
                                };
 
@@ -41,12 +59,12 @@ namespace Emby.Server.Implementations.Activity
 
         private const string BaseActivitySelectText = "select Id, Name, Overview, ShortOverview, Type, ItemId, UserId, DateCreated, LogSeverity from ActivityLogEntries";
 
-        public Task Create(ActivityLogEntry entry)
+        public void Create(ActivityLogEntry entry)
         {
-            return Update(entry);
+            Update(entry);
         }
 
-        public async Task Update(ActivityLogEntry entry)
+        public void Update(ActivityLogEntry entry)
         {
             if (entry == null)
             {

@@ -40,7 +40,6 @@
     <Compile Include="..\SharedVersion.cs">
       <Link>Properties\SharedVersion.cs</Link>
     </Compile>
-    <Compile Include="BasePeriodicWebSocketListener.cs" />
     <Compile Include="BrandingService.cs" />
     <Compile Include="ChannelService.cs" />
     <Compile Include="Devices\DeviceService.cs" />
@@ -50,29 +49,6 @@
     <Compile Include="IHasDtoOptions.cs" />
     <Compile Include="LiveTv\ProgressiveFileCopier.cs" />
     <Compile Include="PlaylistService.cs" />
-    <Compile Include="Reports\Activities\ReportActivitiesBuilder.cs" />
-    <Compile Include="Reports\Common\HeaderActivitiesMetadata.cs" />
-    <Compile Include="Reports\Common\HeaderMetadata.cs" />
-    <Compile Include="Reports\Common\ItemViewType.cs" />
-    <Compile Include="Reports\Common\ReportBuilderBase.cs" />
-    <Compile Include="Reports\Common\ReportDisplayType.cs" />
-    <Compile Include="Reports\Common\ReportExportType.cs" />
-    <Compile Include="Reports\Common\ReportFieldType.cs" />
-    <Compile Include="Reports\Common\ReportHeaderIdType.cs" />
-    <Compile Include="Reports\Common\ReportHelper.cs" />
-    <Compile Include="Reports\Common\ReportIncludeItemTypes.cs" />
-    <Compile Include="Reports\Common\ReportViewType.cs" />
-    <Compile Include="Reports\Data\ReportBuilder.cs" />
-    <Compile Include="Reports\Data\ReportExport.cs" />
-    <Compile Include="Reports\Data\ReportOptions.cs" />
-    <Compile Include="Reports\Model\ReportGroup.cs" />
-    <Compile Include="Reports\Model\ReportHeader.cs" />
-    <Compile Include="Reports\Model\ReportItem.cs" />
-    <Compile Include="Reports\Model\ReportResult.cs" />
-    <Compile Include="Reports\Model\ReportRow.cs" />
-    <Compile Include="Reports\ReportRequests.cs" />
-    <Compile Include="Reports\ReportsService.cs" />
-    <Compile Include="Social\SharingService.cs" />
     <Compile Include="StartupWizardService.cs" />
     <Compile Include="Subtitles\SubtitleService.cs" />
     <Compile Include="Movies\CollectionService.cs" />
@@ -97,7 +73,6 @@
     <Compile Include="Movies\MoviesService.cs" />
     <Compile Include="NewsService.cs" />
     <Compile Include="NotificationsService.cs" />
-    <Compile Include="PackageReviewService.cs" />
     <Compile Include="PackageService.cs" />
     <Compile Include="PluginService.cs" />
     <Compile Include="Images\RemoteImageService.cs" />

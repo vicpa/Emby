@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using MediaBrowser.Model.Entities;
+using System.Globalization;
 
 namespace MediaBrowser.Model.Globalization
 {
@@ -12,17 +13,17 @@ namespace MediaBrowser.Model.Globalization
         /// Gets the cultures.
         /// </summary>
         /// <returns>IEnumerable{CultureDto}.</returns>
-        List<CultureDto> GetCultures();
+        CultureDto[] GetCultures();
         /// <summary>
         /// Gets the countries.
         /// </summary>
         /// <returns>IEnumerable{CountryInfo}.</returns>
-        List<CountryInfo> GetCountries();
+        CountryInfo[] GetCountries();
         /// <summary>
         /// Gets the parental ratings.
         /// </summary>
         /// <returns>IEnumerable{ParentalRating}.</returns>
-        IEnumerable<ParentalRating> GetParentalRatings();
+        ParentalRating[] GetParentalRatings();
         /// <summary>
         /// Gets the rating level.
         /// </summary>
@@ -49,10 +50,12 @@ namespace MediaBrowser.Model.Globalization
         /// Gets the localization options.
         /// </summary>
         /// <returns>IEnumerable{LocalizatonOption}.</returns>
-        IEnumerable<LocalizatonOption> GetLocalizationOptions();
+        LocalizatonOption[] GetLocalizationOptions();
 
         string RemoveDiacritics(string text);
 
         string NormalizeFormKD(string text);
+
+        bool HasUnicodeCategory(string value, UnicodeCategory category);
     }
 }

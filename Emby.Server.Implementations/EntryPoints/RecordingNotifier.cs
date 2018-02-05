@@ -60,6 +60,10 @@ namespace Emby.Server.Implementations.EntryPoints
             {
                 await _sessionManager.SendMessageToUserSessions<TimerEventInfo>(users, name, info, CancellationToken.None);
             }
+            catch (ObjectDisposedException)
+            {
+
+            }
             catch (Exception ex)
             {
                 _logger.ErrorException("Error sending message", ex);
@@ -72,6 +76,7 @@ namespace Emby.Server.Implementations.EntryPoints
             _liveTvManager.SeriesTimerCancelled -= _liveTvManager_SeriesTimerCancelled;
             _liveTvManager.TimerCreated -= _liveTvManager_TimerCreated;
             _liveTvManager.SeriesTimerCreated -= _liveTvManager_SeriesTimerCreated;
+            GC.SuppressFinalize(this);
         }
     }
 }

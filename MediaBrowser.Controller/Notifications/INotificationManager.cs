@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using MediaBrowser.Controller.Entities;
 
 namespace MediaBrowser.Controller.Notifications
 {
@@ -15,6 +16,8 @@ namespace MediaBrowser.Controller.Notifications
         /// <returns>Task.</returns>
         Task SendNotification(NotificationRequest request, CancellationToken cancellationToken);
 
+        Task SendNotification(NotificationRequest request, BaseItem relatedItem, CancellationToken cancellationToken);
+
         /// <summary>
         /// Adds the parts.
         /// </summary>
@@ -26,7 +29,7 @@ namespace MediaBrowser.Controller.Notifications
         /// Gets the notification types.
         /// </summary>
         /// <returns>IEnumerable{NotificationTypeInfo}.</returns>
-        IEnumerable<NotificationTypeInfo> GetNotificationTypes();
+        List<NotificationTypeInfo> GetNotificationTypes();
 
         /// <summary>
         /// Gets the notification services.

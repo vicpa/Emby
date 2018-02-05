@@ -40,11 +40,14 @@ namespace MediaBrowser.Common.Updates
                 options.CacheLength = cacheLength;
             }
 
-            using (var stream = await _httpClient.Get(options).ConfigureAwait(false))
+            using (var response = await _httpClient.SendAsync(options, "GET").ConfigureAwait(false))
             {
-                var obj = _jsonSerializer.DeserializeFromStream<RootObject[]>(stream);
+                using (var stream = response.Content)
+                {
+                    var obj = _jsonSerializer.DeserializeFromStream<RootObject[]>(stream);
 
-                return CheckForUpdateResult(obj, minVersion, updateLevel, assetFilename, packageName, targetFilename);
+                    return CheckForUpdateResult(obj, minVersion, updateLevel, assetFilename, packageName, targetFilename);
+                }
             }
         }
 
@@ -110,17 +113,20 @@ namespace MediaBrowser.Common.Updates
                 BufferContent = false
             };
 
-            using (var stream = await _httpClient.Get(options).ConfigureAwait(false))
+            using (var response = await _httpClient.SendAsync(options, "GET").ConfigureAwait(false))
             {
-                var obj = _jsonSerializer.DeserializeFromStream<RootObject[]>(stream);
+                using (var stream = response.Content)
+                {
+                    var obj = _jsonSerializer.DeserializeFromStream<RootObject[]>(stream);
 
-                obj = obj.Where(i => (i.assets ?? new List<Asset>()).Any(a => IsAsset(a, assetFilename))).ToArray();
+                    obj = obj.Where(i => (i.assets ?? new List<Asset>()).Any(a => IsAsset(a, assetFilename, i.tag_name))).ToArray();
 
-                list.AddRange(obj.Where(i => MatchesUpdateLevel(i, PackageVersionClass.Release)).OrderByDescending(GetVersion).Take(1));
-                list.AddRange(obj.Where(i => MatchesUpdateLevel(i, PackageVersionClass.Beta)).OrderByDescending(GetVersion).Take(1));
-                list.AddRange(obj.Where(i => MatchesUpdateLevel(i, PackageVersionClass.Dev)).OrderByDescending(GetVersion).Take(1));
+                    list.AddRange(obj.Where(i => MatchesUpdateLevel(i, PackageVersionClass.Release)).OrderByDescending(GetVersion).Take(1));
+                    list.AddRange(obj.Where(i => MatchesUpdateLevel(i, PackageVersionClass.Beta)).OrderByDescending(GetVersion).Take(1));
+                    list.AddRange(obj.Where(i => MatchesUpdateLevel(i, PackageVersionClass.Dev)).OrderByDescending(GetVersion).Take(1));
 
-                return list;
+                    return list;
+                }
             }
         }
 
@@ -138,7 +144,8 @@ namespace MediaBrowser.Common.Updates
         private CheckForUpdateResult CheckForUpdateResult(RootObject obj, Version minVersion, string assetFilename, string packageName, string targetFilename)
         {
             Version version;
-            if (!Version.TryParse(obj.tag_name, out version))
+            var versionString = obj.tag_name;
+            if (!Version.TryParse(versionString, out version))
             {
                 return null;
             }
@@ -148,7 +155,7 @@ namespace MediaBrowser.Common.Updates
                 return null;
             }
 
-            var asset = (obj.assets ?? new List<Asset>()).FirstOrDefault(i => IsAsset(i, assetFilename));
+            var asset = (obj.assets ?? new List<Asset>()).FirstOrDefault(i => IsAsset(i, assetFilename, versionString));
 
             if (asset == null)
             {
@@ -175,9 +182,11 @@ namespace MediaBrowser.Common.Updates
             };
         }
 
-        private bool IsAsset(Asset asset, string assetFilename)
+        private bool IsAsset(Asset asset, string assetFilename, string version)
         {
             var downloadFilename = Path.GetFileName(asset.browser_download_url) ?? string.Empty;
+
+            assetFilename = assetFilename.Replace("{version}", version);
 
             if (downloadFilename.IndexOf(assetFilename, StringComparison.OrdinalIgnoreCase) != -1)
             {

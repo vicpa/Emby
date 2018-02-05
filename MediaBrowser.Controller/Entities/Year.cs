@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using MediaBrowser.Model.Serialization;
 
 namespace MediaBrowser.Controller.Entities
@@ -31,6 +30,14 @@ namespace MediaBrowser.Controller.Entities
             {
                 return Path;
             }
+        }
+
+        public override double? GetDefaultPrimaryImageAspectRatio()
+        {
+            double value = 2;
+            value /= 3;
+
+            return value;
         }
 
         [IgnoreDataMember]
@@ -65,7 +72,7 @@ namespace MediaBrowser.Controller.Entities
             return true;
         }
 
-        public IEnumerable<BaseItem> GetTaggedItems(InternalItemsQuery query)
+        public IList<BaseItem> GetTaggedItems(InternalItemsQuery query)
         {
             int year;
 

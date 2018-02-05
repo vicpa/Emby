@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -19,25 +20,59 @@ namespace Emby.Server.Implementations.IO
         private readonly bool _supportsAsyncFileStreams;
         private char[] _invalidFileNameChars;
         private readonly List<IShortcutHandler> _shortcutHandlers = new List<IShortcutHandler>();
-        private bool EnableFileSystemRequestConcat;
+        private bool EnableSeparateFileAndDirectoryQueries;
 
         private string _tempPath;
 
         private SharpCifsFileSystem _sharpCifsFileSystem;
+        private IEnvironmentInfo _environmentInfo;
+        private bool _isEnvironmentCaseInsensitive;
 
-        public ManagedFileSystem(ILogger logger, IEnvironmentInfo environmentInfo, string tempPath)
+        private string _defaultDirectory;
+
+        public ManagedFileSystem(ILogger logger, IEnvironmentInfo environmentInfo, string defaultDirectory, string tempPath)
         {
             Logger = logger;
             _supportsAsyncFileStreams = true;
             _tempPath = tempPath;
+            _environmentInfo = environmentInfo;
+            _defaultDirectory = defaultDirectory;
 
             // On Linux, this needs to be true or symbolic links are ignored
-            EnableFileSystemRequestConcat = environmentInfo.OperatingSystem != MediaBrowser.Model.System.OperatingSystem.Windows &&
+            // TODO: See if still needed under .NET Core
+            EnableSeparateFileAndDirectoryQueries = environmentInfo.OperatingSystem != MediaBrowser.Model.System.OperatingSystem.Windows &&
                 environmentInfo.OperatingSystem != MediaBrowser.Model.System.OperatingSystem.OSX;
 
             SetInvalidFileNameChars(environmentInfo.OperatingSystem == MediaBrowser.Model.System.OperatingSystem.Windows);
 
             _sharpCifsFileSystem = new SharpCifsFileSystem(environmentInfo.OperatingSystem);
+
+            _isEnvironmentCaseInsensitive = environmentInfo.OperatingSystem == MediaBrowser.Model.System.OperatingSystem.Windows;
+        }
+
+        public string DefaultDirectory
+        {
+            get
+            {
+                var value = _defaultDirectory;
+
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    try
+                    {
+                        if (DirectoryExists(value))
+                        {
+                            return value;
+                        }
+                    }
+                    catch
+                    {
+
+                    }
+                }
+
+                return null;
+            }
         }
 
         public void AddShortcutHandler(IShortcutHandler handler)
@@ -53,11 +88,9 @@ namespace Emby.Server.Implementations.IO
             }
             else
             {
-                // GetInvalidFileNameChars is less restrictive in Linux/Mac than Windows, this mimic Windows behavior for mono under Linux/Mac.
-                _invalidFileNameChars = new char[41] { '\x00', '\x01', '\x02', '\x03', '\x04', '\x05', '\x06', '\x07',
-            '\x08', '\x09', '\x0A', '\x0B', '\x0C', '\x0D', '\x0E', '\x0F', '\x10', '\x11', '\x12',
-            '\x13', '\x14', '\x15', '\x16', '\x17', '\x18', '\x19', '\x1A', '\x1B', '\x1C', '\x1D',
-            '\x1E', '\x1F', '\x22', '\x3C', '\x3E', '\x7C', ':', '*', '?', '\\', '/' };
+                // Be consistent across platforms because the windows server will fail to query network shares that don't follow windows conventions
+                // https://referencesource.microsoft.com/#mscorlib/system/io/path.cs
+                _invalidFileNameChars = new char[] { '\"', '<', '>', '|', '\0', (Char)1, (Char)2, (Char)3, (Char)4, (Char)5, (Char)6, (Char)7, (Char)8, (Char)9, (Char)10, (Char)11, (Char)12, (Char)13, (Char)14, (Char)15, (Char)16, (Char)17, (Char)18, (Char)19, (Char)20, (Char)21, (Char)22, (Char)23, (Char)24, (Char)25, (Char)26, (Char)27, (Char)28, (Char)29, (Char)30, (Char)31, ':', '*', '?', '\\', '/' };
             }
         }
 
@@ -470,6 +503,11 @@ namespace Emby.Server.Implementations.IO
 
         public void SetHidden(string path, bool isHidden)
         {
+            if (_environmentInfo.OperatingSystem != MediaBrowser.Model.System.OperatingSystem.Windows)
+            {
+                return;
+            }
+
             if (_sharpCifsFileSystem.IsEnabledForPath(path))
             {
                 _sharpCifsFileSystem.SetHidden(path, isHidden);
@@ -495,6 +533,11 @@ namespace Emby.Server.Implementations.IO
 
         public void SetReadOnly(string path, bool isReadOnly)
         {
+            if (_environmentInfo.OperatingSystem != MediaBrowser.Model.System.OperatingSystem.Windows)
+            {
+                return;
+            }
+
             if (_sharpCifsFileSystem.IsEnabledForPath(path))
             {
                 _sharpCifsFileSystem.SetReadOnly(path, isReadOnly);
@@ -520,6 +563,11 @@ namespace Emby.Server.Implementations.IO
 
         public void SetAttributes(string path, bool isHidden, bool isReadOnly)
         {
+            if (_environmentInfo.OperatingSystem != MediaBrowser.Model.System.OperatingSystem.Windows)
+            {
+                return;
+            }
+
             if (_sharpCifsFileSystem.IsEnabledForPath(path))
             {
                 _sharpCifsFileSystem.SetAttributes(path, isHidden, isReadOnly);
@@ -804,7 +852,7 @@ namespace Emby.Server.Implementations.IO
 
             // On linux and osx the search pattern is case sensitive
             // If we're OK with case-sensitivity, and we're only filtering for one extension, then use the native method
-            if (enableCaseSensitiveExtensions && extensions != null && extensions.Length == 1)
+            if ((enableCaseSensitiveExtensions || _isEnvironmentCaseInsensitive) && extensions != null && extensions.Length == 1)
             {
                 return ToMetadata(new DirectoryInfo(path).EnumerateFiles("*" + extensions[0], searchOption));
             }
@@ -837,7 +885,7 @@ namespace Emby.Server.Implementations.IO
             var directoryInfo = new DirectoryInfo(path);
             var searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
 
-            if (EnableFileSystemRequestConcat)
+            if (EnableSeparateFileAndDirectoryQueries)
             {
                 return ToMetadata(directoryInfo.EnumerateDirectories("*", searchOption))
                                 .Concat(ToMetadata(directoryInfo.EnumerateFiles("*", searchOption)));
@@ -879,9 +927,28 @@ namespace Emby.Server.Implementations.IO
             return File.OpenRead(path);
         }
 
+        private void CopyFileUsingStreams(string source, string target, bool overwrite)
+        {
+            using (var sourceStream = OpenRead(source))
+            {
+                using (var targetStream = GetFileStream(target, FileOpenMode.Create, FileAccessMode.Write, FileShareMode.Read))
+                {
+                    sourceStream.CopyTo(targetStream);
+                }
+            }
+        }
+
         public void CopyFile(string source, string target, bool overwrite)
         {
-            if (_sharpCifsFileSystem.IsEnabledForPath(source))
+            var enableSharpCifsForSource = _sharpCifsFileSystem.IsEnabledForPath(source);
+
+            if (enableSharpCifsForSource != _sharpCifsFileSystem.IsEnabledForPath(target))
+            {
+                CopyFileUsingStreams(source, target, overwrite);
+                return;
+            }
+
+            if (enableSharpCifsForSource)
             {
                 _sharpCifsFileSystem.CopyFile(source, target, overwrite);
                 return;
@@ -1015,7 +1082,7 @@ namespace Emby.Server.Implementations.IO
 
             // On linux and osx the search pattern is case sensitive
             // If we're OK with case-sensitivity, and we're only filtering for one extension, then use the native method
-            if (enableCaseSensitiveExtensions && extensions != null && extensions.Length == 1)
+            if ((enableCaseSensitiveExtensions || _isEnvironmentCaseInsensitive) && extensions != null && extensions.Length == 1)
             {
                 return Directory.EnumerateFiles(path, "*" + extensions[0], searchOption);
             }
@@ -1051,7 +1118,25 @@ namespace Emby.Server.Implementations.IO
 
         public virtual void SetExecutable(string path)
         {
+            if (_environmentInfo.OperatingSystem == MediaBrowser.Model.System.OperatingSystem.OSX)
+            {
+                RunProcess("chmod", "+x \"" + path + "\"", GetDirectoryName(path));
+            }
+        }
 
+        private void RunProcess(string path, string args, string workingDirectory)
+        {
+            using (var process = Process.Start(new ProcessStartInfo
+            {
+                Arguments = args,
+                FileName = path,
+                CreateNoWindow = true,
+                WorkingDirectory = workingDirectory,
+                WindowStyle = ProcessWindowStyle.Normal
+            }))
+            {
+                process.WaitForExit();
+            }
         }
     }
 }

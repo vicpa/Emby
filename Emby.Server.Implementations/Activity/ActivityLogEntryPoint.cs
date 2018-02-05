@@ -81,7 +81,7 @@ namespace Emby.Server.Implementations.Activity
             _userManager.UserCreated += _userManager_UserCreated;
             _userManager.UserPasswordChanged += _userManager_UserPasswordChanged;
             _userManager.UserDeleted += _userManager_UserDeleted;
-            _userManager.UserConfigurationUpdated += _userManager_UserConfigurationUpdated;
+            _userManager.UserPolicyUpdated += _userManager_UserPolicyUpdated;
             _userManager.UserLockedOut += _userManager_UserLockedOut;
 
             //_config.ConfigurationUpdated += _config_ConfigurationUpdated;
@@ -128,7 +128,7 @@ namespace Emby.Server.Implementations.Activity
             {
                 // Don't report theme song or local trailer playback
                 return;
-            } 
+            }
 
             if (e.Users.Count == 0)
             {
@@ -160,8 +160,8 @@ namespace Emby.Server.Implementations.Activity
             {
                 // Don't report theme song or local trailer playback
                 return;
-            } 
-            
+            }
+
             if (e.Users.Count == 0)
             {
                 return;
@@ -254,12 +254,12 @@ namespace Emby.Server.Implementations.Activity
             });
         }
 
-        void _userManager_UserConfigurationUpdated(object sender, GenericEventArgs<User> e)
+        void _userManager_UserPolicyUpdated(object sender, GenericEventArgs<User> e)
         {
             CreateLogEntry(new ActivityLogEntry
             {
-                Name = string.Format(_localization.GetLocalizedString("UserConfigurationUpdatedWithName"), e.Argument.Name),
-                Type = "UserConfigurationUpdated",
+                Name = string.Format(_localization.GetLocalizedString("UserPolicyUpdatedWithName"), e.Argument.Name),
+                Type = "UserPolicyUpdated",
                 UserId = e.Argument.Id.ToString("N")
             });
         }
@@ -416,7 +416,7 @@ namespace Emby.Server.Implementations.Activity
             {
                 return;
             }
-            
+
             var time = result.EndTimeUtc - result.StartTimeUtc;
             var runningTime = string.Format(_localization.GetLocalizedString("LabelRunningTimeValue"), ToUserFriendlyString(time));
 
@@ -444,11 +444,11 @@ namespace Emby.Server.Implementations.Activity
             }
         }
 
-        private async void CreateLogEntry(ActivityLogEntry entry)
+        private void CreateLogEntry(ActivityLogEntry entry)
         {
             try
             {
-                await _activityManager.Create(entry).ConfigureAwait(false);
+                _activityManager.Create(entry);
             }
             catch
             {
@@ -482,7 +482,7 @@ namespace Emby.Server.Implementations.Activity
             _userManager.UserCreated -= _userManager_UserCreated;
             _userManager.UserPasswordChanged -= _userManager_UserPasswordChanged;
             _userManager.UserDeleted -= _userManager_UserDeleted;
-            _userManager.UserConfigurationUpdated -= _userManager_UserConfigurationUpdated;
+            _userManager.UserPolicyUpdated -= _userManager_UserPolicyUpdated;
             _userManager.UserLockedOut -= _userManager_UserLockedOut;
 
             _config.ConfigurationUpdated -= _config_ConfigurationUpdated;
@@ -491,6 +491,7 @@ namespace Emby.Server.Implementations.Activity
             //_logManager.LoggerLoaded -= _logManager_LoggerLoaded;
 
             _appHost.ApplicationUpdated -= _appHost_ApplicationUpdated;
+            GC.SuppressFinalize(this);
         }
 
         /// <summary>

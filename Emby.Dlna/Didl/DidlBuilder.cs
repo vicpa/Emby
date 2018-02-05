@@ -181,6 +181,7 @@ namespace Emby.Dlna.Didl
         {
             var mime = MimeTypes.GetMimeType(input);
 
+            // TODO: Instead of being hard-coded here, this should probably be moved into all of the existing profiles
             if (string.Equals(mime, "video/mp2t", StringComparison.OrdinalIgnoreCase))
             {
                 mime = "video/mpeg";
@@ -198,7 +199,7 @@ namespace Emby.Dlna.Didl
                 streamInfo = new StreamBuilder(_mediaEncoder, GetStreamBuilderLogger(options)).BuildVideoItem(new VideoOptions
                 {
                     ItemId = GetClientId(video),
-                    MediaSources = sources,
+                    MediaSources = sources.ToArray(sources.Count),
                     Profile = _profile,
                     DeviceId = deviceId,
                     MaxBitrate = _profile.MaxStreamingBitrate
@@ -209,8 +210,8 @@ namespace Emby.Dlna.Didl
             var targetHeight = streamInfo.TargetHeight;
 
             var contentFeatureList = new ContentFeatureBuilder(_profile).BuildVideoHeader(streamInfo.Container,
-                streamInfo.TargetVideoCodec,
-                streamInfo.TargetAudioCodec,
+                streamInfo.TargetVideoCodec.FirstOrDefault(),
+                streamInfo.TargetAudioCodec.FirstOrDefault(),
                 targetWidth,
                 targetHeight,
                 streamInfo.TargetVideoBitDepth,
@@ -236,7 +237,7 @@ namespace Emby.Dlna.Didl
                 AddVideoResource(writer, video, deviceId, filter, contentFeature, streamInfo);
             }
 
-            var subtitleProfiles = streamInfo.GetSubtitleProfiles(false, _serverAddress, _accessToken)
+            var subtitleProfiles = streamInfo.GetSubtitleProfiles(_mediaEncoder, false, _serverAddress, _accessToken)
                 .Where(subtitle => subtitle.DeliveryMethod == SubtitleDeliveryMethod.External)
                 .ToList();
 
@@ -353,8 +354,8 @@ namespace Emby.Dlna.Didl
             }
 
             var mediaProfile = _profile.GetVideoMediaProfile(streamInfo.Container,
-                streamInfo.TargetAudioCodec,
-                streamInfo.TargetVideoCodec,
+                streamInfo.TargetAudioCodec.FirstOrDefault(),
+                streamInfo.TargetVideoCodec.FirstOrDefault(),
                 streamInfo.TargetAudioBitrate,
                 targetWidth,
                 targetHeight,
@@ -391,85 +392,77 @@ namespace Emby.Dlna.Didl
 
         private string GetDisplayName(BaseItem item, StubType? itemStubType, BaseItem context)
         {
-            if (itemStubType.HasValue && itemStubType.Value == StubType.People)
-            {
-                if (item is Video)
-                {
-                    return _localization.GetLocalizedString("HeaderCastCrew");
-                }
-                return _localization.GetLocalizedString("HeaderPeople");
-            }
             if (itemStubType.HasValue && itemStubType.Value == StubType.Latest)
             {
-                return _localization.GetLocalizedString("ViewTypeMusicLatest");
+                return _localization.GetLocalizedString("Latest");
             }
             if (itemStubType.HasValue && itemStubType.Value == StubType.Playlists)
             {
-                return _localization.GetLocalizedString("ViewTypeMusicPlaylists");
+                return _localization.GetLocalizedString("Playlists");
             }
             if (itemStubType.HasValue && itemStubType.Value == StubType.AlbumArtists)
             {
-                return _localization.GetLocalizedString("ViewTypeMusicAlbumArtists");
+                return _localization.GetLocalizedString("HeaderAlbumArtists");
             }
             if (itemStubType.HasValue && itemStubType.Value == StubType.Albums)
             {
-                return _localization.GetLocalizedString("ViewTypeMusicAlbums");
+                return _localization.GetLocalizedString("Albums");
             }
             if (itemStubType.HasValue && itemStubType.Value == StubType.Artists)
             {
-                return _localization.GetLocalizedString("ViewTypeMusicArtists");
+                return _localization.GetLocalizedString("Artists");
             }
             if (itemStubType.HasValue && itemStubType.Value == StubType.Songs)
             {
-                return _localization.GetLocalizedString("ViewTypeMusicSongs");
+                return _localization.GetLocalizedString("Songs");
             }
             if (itemStubType.HasValue && itemStubType.Value == StubType.Genres)
             {
-                return _localization.GetLocalizedString("ViewTypeTvGenres");
+                return _localization.GetLocalizedString("Genres");
             }
             if (itemStubType.HasValue && itemStubType.Value == StubType.FavoriteAlbums)
             {
-                return _localization.GetLocalizedString("ViewTypeMusicFavoriteAlbums");
+                return _localization.GetLocalizedString("HeaderFavoriteAlbums");
             }
             if (itemStubType.HasValue && itemStubType.Value == StubType.FavoriteArtists)
             {
-                return _localization.GetLocalizedString("ViewTypeMusicFavoriteArtists");
+                return _localization.GetLocalizedString("HeaderFavoriteArtists");
             }
             if (itemStubType.HasValue && itemStubType.Value == StubType.FavoriteSongs)
             {
-                return _localization.GetLocalizedString("ViewTypeMusicFavoriteSongs");
+                return _localization.GetLocalizedString("HeaderFavoriteSongs");
             }
             if (itemStubType.HasValue && itemStubType.Value == StubType.ContinueWatching)
             {
-                return _localization.GetLocalizedString("ViewTypeMovieResume");
+                return _localization.GetLocalizedString("HeaderContinueWatching");
             }
             if (itemStubType.HasValue && itemStubType.Value == StubType.Movies)
             {
-                return _localization.GetLocalizedString("ViewTypeMovieMovies");
+                return _localization.GetLocalizedString("Movies");
             }
             if (itemStubType.HasValue && itemStubType.Value == StubType.Collections)
             {
-                return _localization.GetLocalizedString("ViewTypeMovieCollections");
+                return _localization.GetLocalizedString("Collections");
             }
             if (itemStubType.HasValue && itemStubType.Value == StubType.Favorites)
             {
-                return _localization.GetLocalizedString("ViewTypeMovieFavorites");
+                return _localization.GetLocalizedString("Favorites");
             }
             if (itemStubType.HasValue && itemStubType.Value == StubType.NextUp)
             {
-                return _localization.GetLocalizedString("ViewTypeTvNextUp");
+                return _localization.GetLocalizedString("HeaderNextUp");
             }
             if (itemStubType.HasValue && itemStubType.Value == StubType.FavoriteSeries)
             {
-                return _localization.GetLocalizedString("ViewTypeTvFavoriteSeries");
+                return _localization.GetLocalizedString("HeaderFavoriteShows");
             }
             if (itemStubType.HasValue && itemStubType.Value == StubType.FavoriteEpisodes)
             {
-                return _localization.GetLocalizedString("ViewTypeTvFavoriteEpisodes");
+                return _localization.GetLocalizedString("HeaderFavoriteEpisodes");
             }
             if (itemStubType.HasValue && itemStubType.Value == StubType.Series)
             {
-                return _localization.GetLocalizedString("ViewTypeTvShowSeries");
+                return _localization.GetLocalizedString("Shows");
             }
 
             var episode = item as Episode;
@@ -513,7 +506,7 @@ namespace Emby.Dlna.Didl
                 streamInfo = new StreamBuilder(_mediaEncoder, GetStreamBuilderLogger(options)).BuildAudioItem(new AudioOptions
                 {
                     ItemId = GetClientId(audio),
-                    MediaSources = sources,
+                    MediaSources = sources.ToArray(sources.Count),
                     Profile = _profile,
                     DeviceId = deviceId
                 });
@@ -562,7 +555,7 @@ namespace Emby.Dlna.Didl
             }
 
             var mediaProfile = _profile.GetAudioMediaProfile(streamInfo.Container,
-                streamInfo.TargetAudioCodec,
+                streamInfo.TargetAudioCodec.FirstOrDefault(),
                 targetChannels,
                 targetAudioBitrate,
                 targetSampleRate,
@@ -575,7 +568,7 @@ namespace Emby.Dlna.Didl
                 : mediaProfile.MimeType;
 
             var contentFeatures = new ContentFeatureBuilder(_profile).BuildAudioHeader(streamInfo.Container,
-                streamInfo.TargetAudioCodec,
+                streamInfo.TargetAudioCodec.FirstOrDefault(),
                 targetAudioBitrate,
                 targetSampleRate,
                 targetChannels,
@@ -868,55 +861,35 @@ namespace Emby.Dlna.Didl
         {
             AddCommonFields(item, itemStubType, context, writer, filter);
 
-            var audio = item as Audio;
+            var hasArtists = item as IHasArtist;
+            var hasAlbumArtists = item as IHasAlbumArtist;
 
-            if (audio != null)
+            if (hasArtists != null)
             {
-                foreach (var artist in audio.Artists)
+                foreach (var artist in hasArtists.Artists)
                 {
                     AddValue(writer, "upnp", "artist", artist, NS_UPNP);
-                }
+                    AddValue(writer, "dc", "creator", artist, NS_DC);
 
-                if (!string.IsNullOrEmpty(audio.Album))
-                {
-                    AddValue(writer, "upnp", "album", audio.Album, NS_UPNP);
-                }
-
-                foreach (var artist in audio.AlbumArtists)
-                {
-                    AddAlbumArtist(writer, artist);
+                    // If it doesn't support album artists (musicvideo), then tag as both
+                    if (hasAlbumArtists == null)
+                    {
+                        AddAlbumArtist(writer, artist);
+                    }
                 }
             }
 
-            var album = item as MusicAlbum;
-
-            if (album != null)
+            if (hasAlbumArtists != null)
             {
-                foreach (var artist in album.AlbumArtists)
+                foreach (var albumArtist in hasAlbumArtists.AlbumArtists)
                 {
-                    AddAlbumArtist(writer, artist);
-                    AddValue(writer, "upnp", "artist", artist, NS_UPNP);
-                }
-                foreach (var artist in album.Artists)
-                {
-                    AddValue(writer, "upnp", "artist", artist, NS_UPNP);
+                    AddAlbumArtist(writer, albumArtist);
                 }
             }
 
-            var musicVideo = item as MusicVideo;
-
-            if (musicVideo != null)
+            if (!string.IsNullOrWhiteSpace(item.Album))
             {
-                foreach (var artist in musicVideo.Artists)
-                {
-                    AddValue(writer, "upnp", "artist", artist, NS_UPNP);
-                    AddAlbumArtist(writer, artist);
-                }
-
-                if (!string.IsNullOrEmpty(musicVideo.Album))
-                {
-                    AddValue(writer, "upnp", "album", musicVideo.Album, NS_UPNP);
-                }
+                AddValue(writer, "upnp", "album", item.Album, NS_UPNP);
             }
 
             if (item.IndexNumber.HasValue)
@@ -961,12 +934,6 @@ namespace Emby.Dlna.Didl
 
         private void AddCover(BaseItem item, BaseItem context, StubType? stubType, XmlWriter writer)
         {
-            if (stubType.HasValue && stubType.Value == StubType.People)
-            {
-                AddEmbeddedImageAsCover("people", writer);
-                return;
-            }
-
             ImageDownloadInfo imageInfo = null;
 
             if (context is UserView)
@@ -1085,8 +1052,10 @@ namespace Emby.Dlna.Didl
 
             writer.WriteStartElement(string.Empty, "res", NS_DIDL);
 
-            var width = albumartUrlInfo.Width;
-            var height = albumartUrlInfo.Height;
+            // Images must have a reported size or many clients (Bubble upnp), will only use the first thumbnail
+            // rather than using a larger one when available
+            var width = albumartUrlInfo.Width ?? maxWidth;
+            var height = albumartUrlInfo.Height ?? maxHeight;
 
             var contentFeatures = new ContentFeatureBuilder(_profile)
                 .BuildImageHeader(format, width, height, imageInfo.IsDirectStream, org_Pn);
@@ -1097,10 +1066,7 @@ namespace Emby.Dlna.Didl
                 contentFeatures
                 ));
 
-            if (width.HasValue && height.HasValue)
-            {
-                writer.WriteAttributeString("resolution", string.Format("{0}x{1}", width.Value, height.Value));
-            }
+            writer.WriteAttributeString("resolution", string.Format("{0}x{1}", width, height));
 
             writer.WriteString(albumartUrlInfo.Url);
 
@@ -1152,20 +1118,33 @@ namespace Emby.Dlna.Didl
 
             }
 
-            int? width = null;
-            int? height = null;
+            int? width = imageInfo.Width;
+            int? height = imageInfo.Height;
 
-            try
+            if (width == 0 || height == 0)
             {
-                var size = _imageProcessor.GetImageSize(imageInfo);
-
-                width = Convert.ToInt32(size.Width);
-                height = Convert.ToInt32(size.Height);
+                //_imageProcessor.GetImageSize(item, imageInfo);
+                width = null;
+                height = null;
             }
-            catch
+
+            else if (width == -1 || height == -1)
             {
-
+                width = null;
+                height = null;
             }
+
+            //try
+            //{
+            //    var size = _imageProcessor.GetImageSize(imageInfo);
+
+            //    width = Convert.ToInt32(size.Width);
+            //    height = Convert.ToInt32(size.Height);
+            //}
+            //catch
+            //{
+
+            //}
 
             var inputFormat = (Path.GetExtension(imageInfo.Path) ?? string.Empty)
                 .TrimStart('.')

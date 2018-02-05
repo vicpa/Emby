@@ -9,8 +9,25 @@
             background-color: transparent !important;
         }
 
-        .mouseIdle, .mouseIdle button, .mouseIdle input, .mouseIdle textarea, .mouseIdle a {
+        .mouseIdle, .mouseIdle button, .mouseIdle select, .mouseIdle input, .mouseIdle textarea, .mouseIdle a, .mouseIdle label {
             cursor: none !important;
+        }
+
+        .preload {
+            background-color: #000;
+        }
+
+        .hide, .mouseIdle .hide-mouse-idle {
+            display: none !important;
+        }
+
+        .mainDrawerHandle {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 1;
+            width: 10px;
         }
     </style>
 
@@ -21,5 +38,6 @@
     <div class="mainDrawer hide"><div class="mainDrawer-scrollContainer scrollContainer"></div></div>
     <div class="skinHeader"></div>
     <div class="mainAnimatedPages skinBody"></div>
+    <div class="mainDrawerHandle"></div>
 </body>
 </html>

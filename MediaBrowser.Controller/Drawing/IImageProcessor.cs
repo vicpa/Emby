@@ -24,23 +24,18 @@ namespace MediaBrowser.Controller.Drawing
         /// Gets the image enhancers.
         /// </summary>
         /// <value>The image enhancers.</value>
-        IEnumerable<IImageEnhancer> ImageEnhancers { get; }
+        IImageEnhancer[] ImageEnhancers { get; }
+
+        ImageSize GetImageSize(string path);
 
         /// <summary>
         /// Gets the size of the image.
         /// </summary>
         /// <param name="info">The information.</param>
         /// <returns>ImageSize.</returns>
-        ImageSize GetImageSize(ItemImageInfo info);
+        ImageSize GetImageSize(BaseItem item, ItemImageInfo info);
 
-        ImageSize GetImageSize(ItemImageInfo info, bool allowSlowMethods);
-
-        /// <summary>
-        /// Gets the size of the image.
-        /// </summary>
-        /// <param name="path">The path.</param>
-        /// <returns>ImageSize.</returns>
-        ImageSize GetImageSize(string path);
+        ImageSize GetImageSize(BaseItem item, ItemImageInfo info, bool allowSlowMethods, bool updateItem);
 
         /// <summary>
         /// Adds the parts.
@@ -54,7 +49,7 @@ namespace MediaBrowser.Controller.Drawing
         /// <param name="item">The item.</param>
         /// <param name="imageType">Type of the image.</param>
         /// <returns>IEnumerable{IImageEnhancer}.</returns>
-        IEnumerable<IImageEnhancer> GetSupportedEnhancers(IHasMetadata item, ImageType imageType);
+        List<IImageEnhancer> GetSupportedEnhancers(BaseItem item, ImageType imageType);
 
         /// <summary>
         /// Gets the image cache tag.
@@ -62,7 +57,7 @@ namespace MediaBrowser.Controller.Drawing
         /// <param name="item">The item.</param>
         /// <param name="image">The image.</param>
         /// <returns>Guid.</returns>
-        string GetImageCacheTag(IHasMetadata item, ItemImageInfo image);
+        string GetImageCacheTag(BaseItem item, ItemImageInfo image);
 
         /// <summary>
         /// Gets the image cache tag.
@@ -71,7 +66,7 @@ namespace MediaBrowser.Controller.Drawing
         /// <param name="image">The image.</param>
         /// <param name="imageEnhancers">The image enhancers.</param>
         /// <returns>Guid.</returns>
-        string GetImageCacheTag(IHasMetadata item, ItemImageInfo image, List<IImageEnhancer> imageEnhancers);
+        string GetImageCacheTag(BaseItem item, ItemImageInfo image, List<IImageEnhancer> imageEnhancers);
 
         /// <summary>
         /// Processes the image.
@@ -95,7 +90,7 @@ namespace MediaBrowser.Controller.Drawing
         /// <param name="imageType">Type of the image.</param>
         /// <param name="imageIndex">Index of the image.</param>
         /// <returns>Task{System.String}.</returns>
-        Task<string> GetEnhancedImage(IHasMetadata item, ImageType imageType, int imageIndex);
+        Task<string> GetEnhancedImage(BaseItem item, ImageType imageType, int imageIndex);
 
         /// <summary>
         /// Gets the supported image output formats.
@@ -117,6 +112,6 @@ namespace MediaBrowser.Controller.Drawing
 
         IImageEncoder ImageEncoder { get; set; }
 
-        void SaveImageSize(string path, DateTime imageDateModified, ImageSize size);
+        bool SupportsTransparency(string path);
     }
 }

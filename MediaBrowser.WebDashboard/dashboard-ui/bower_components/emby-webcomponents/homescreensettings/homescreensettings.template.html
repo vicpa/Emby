@@ -1,13 +1,11 @@
 ﻿<form style="margin:0 auto;">
 
-    <div class="verticalSection">
+    <div class="verticalSection verticalSection-extrabottompadding">
 
-        <br />
-        <h1 class="sectionTitle">
+        <h2 class="sectionTitle">
             ${HeaderHomeScreen}
-        </h1>
+        </h2>
 
-        <br />
         <div class="selectContainer">
             <select is="emby-select" id="selectHomeSection1" label="{section1label}">
                 <option value="smalllibrarytiles">${HeaderMyMedia}</option>
@@ -115,33 +113,22 @@
         </div>
     </div>
 
-    <div class="verticalSection">
+    <div class="verticalSection verticalSection-extrabottompadding">
 
-        <h1 class="sectionTitle">
+        <h2 class="sectionTitle">
             ${HeaderLibraryOrder}
-        </h1>
+        </h2>
         <div class="paperList viewOrderList">
 
         </div>
 
     </div>
 
-    <div class="verticalSection landingScreensSection hide">
-
-        <h1 class="sectionTitle">
-            ${HeaderLandingScreens}
-        </h1>
-        <p>${LandingScreensHelp}</p>
-        <div class="landingScreens">
-
-        </div>
-    </div>
-
-    <div class="verticalSection">
-        <h1 class="sectionTitle">
-            ${HeaderLatestMedia}
-        </h1>
-        <p>${LabelSelectLastestItemsFolders}</p>
+    <div class="verticalSection verticalSection-extrabottompadding">
+        <h2 class="sectionTitle">
+            ${HeaderHomeScreenContent}
+        </h2>
+        <p>${LabelSelectHomeScreenItemsFolders}</p>
         <div class="latestItemsList">
 
         </div>
@@ -154,10 +141,21 @@
 
     </div>
 
-    <div class="verticalSection">
-        <h1 class="sectionTitle">
+    <div class="verticalSection verticalSection-extrabottompadding landingScreensSection hide">
+
+        <h2 class="sectionTitle">
+            ${HeaderLandingScreens}
+        </h2>
+        <p>${LandingScreensHelp}</p>
+        <div class="landingScreens">
+
+        </div>
+    </div>
+
+    <div class="verticalSection verticalSection-extrabottompadding">
+        <h2 class="sectionTitle">
             ${HeaderLibraryFolders}
-        </h1>
+        </h2>
         <div>
             <p>${LabelSelectFolderGroups}</p>
             <div class="folderGroupList"></div>

@@ -1,7 +1,7 @@
 ﻿using System;
+using System.Linq;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Configuration;
-using System.Linq;
 using MediaBrowser.Model.Serialization;
 using MediaBrowser.Model.Entities;
 
@@ -36,12 +36,6 @@ namespace MediaBrowser.Controller.Entities
         public string FindSeriesPresentationUniqueKey()
         {
             return SeriesPresentationUniqueKey;
-        }
-
-        [IgnoreDataMember]
-        public override bool EnableRefreshOnDateModifiedChange
-        {
-            get { return true; }
         }
 
         public Guid? FindSeriesId()

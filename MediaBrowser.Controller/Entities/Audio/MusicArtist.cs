@@ -87,7 +87,7 @@ namespace MediaBrowser.Controller.Entities.Audio
             return !IsAccessedByName;
         }
 
-        public IEnumerable<BaseItem> GetTaggedItems(InternalItemsQuery query)
+        public IList<BaseItem> GetTaggedItems(InternalItemsQuery query)
         {
             if (query.IncludeItemTypes.Length == 0)
             {
@@ -214,18 +214,19 @@ namespace MediaBrowser.Controller.Entities.Audio
         {
             var items = GetRecursiveChildren();
 
-            var songs = items.OfType<Audio>().ToList();
-
-            var others = items.Except(songs).ToList();
-
-            var totalItems = songs.Count + others.Count;
+            var totalItems = items.Count;
             var numComplete = 0;
 
             var childUpdateType = ItemUpdateType.None;
 
             // Refresh songs
-            foreach (var item in songs)
+            foreach (var item in items)
             {
+                if (!(item is Audio))
+                {
+                    continue;
+                }
+
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var updateType = await item.RefreshMetadata(refreshOptions, cancellationToken).ConfigureAwait(false);
@@ -248,8 +249,13 @@ namespace MediaBrowser.Controller.Entities.Audio
             await RefreshMetadata(parentRefreshOptions, cancellationToken).ConfigureAwait(false);
 
             // Refresh all non-songs
-            foreach (var item in others)
+            foreach (var item in items)
             {
+                if (item is Audio)
+                {
+                    continue;
+                }
+
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var updateType = await item.RefreshMetadata(parentRefreshOptions, cancellationToken).ConfigureAwait(false);

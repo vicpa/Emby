@@ -1,8 +1,9 @@
-﻿using MediaBrowser.Model.Serialization;
+﻿using MediaBrowser.Controller.Providers;
+using MediaBrowser.Model.Serialization;
 
 namespace MediaBrowser.Controller.Entities.Audio
 {
-    public class AudioPodcast : Audio
+    public class AudioPodcast : Audio, IHasLookupInfo<SongInfo>
     {
         [IgnoreDataMember]
         public override bool SupportsPositionTicksResume
@@ -13,9 +14,18 @@ namespace MediaBrowser.Controller.Entities.Audio
             }
         }
 
+        [IgnoreDataMember]
+        public override bool SupportsPlayedStatus
+        {
+            get
+            {
+                return true;
+            }
+        }
+
         public override double? GetDefaultPrimaryImageAspectRatio()
         {
-            return null;
+            return 1;
         }
     }
 }

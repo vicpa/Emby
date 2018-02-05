@@ -9,6 +9,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Model.Services;
+using MediaBrowser.Common.Net;
+using System.Threading;
 
 namespace MediaBrowser.Api
 {
@@ -32,6 +34,13 @@ namespace MediaBrowser.Api
     {
     }
 
+    [Route("/Startup/RemoteAccess", "POST", Summary = "Updates initial server configuration")]
+    public class UpdateRemoteAccessConfiguration : IReturnVoid
+    {
+        public bool EnableRemoteAccess { get; set; }
+        public bool EnableAutomaticPortMapping { get; set; }
+    }
+
     [Route("/Startup/User", "GET", Summary = "Gets initial user info")]
     public class GetStartupUser : IReturn<StartupUser>
     {
@@ -50,30 +59,59 @@ namespace MediaBrowser.Api
         private readonly IUserManager _userManager;
         private readonly IConnectManager _connectManager;
         private readonly IMediaEncoder _mediaEncoder;
+        private readonly IHttpClient _httpClient;
 
-        public StartupWizardService(IServerConfigurationManager config, IServerApplicationHost appHost, IUserManager userManager, IConnectManager connectManager, IMediaEncoder mediaEncoder)
+        public StartupWizardService(IServerConfigurationManager config, IHttpClient httpClient, IServerApplicationHost appHost, IUserManager userManager, IConnectManager connectManager, IMediaEncoder mediaEncoder)
         {
             _config = config;
             _appHost = appHost;
             _userManager = userManager;
             _connectManager = connectManager;
             _mediaEncoder = mediaEncoder;
+            _httpClient = httpClient;
         }
 
         public void Post(ReportStartupWizardComplete request)
         {
             _config.Configuration.IsStartupWizardCompleted = true;
-            SetWizardFinishValues(_config.Configuration);
+            _config.Configuration.AutoRunWebApp = true;
+            _config.SetOptimalValues();
             _config.SaveConfiguration();
+
+            Task.Run(UpdateStats);
         }
 
-        public async Task<object> Get(GetStartupInfo request)
+        private async Task UpdateStats()
         {
-            var info = await _appHost.GetSystemInfo().ConfigureAwait(false);
+            try
+            {
+                var url = string.Format("http://www.mb3admin.com/admin/service/package/installed?mac={0}&product=MBServer&operation=Install&version={1}",
+                    _appHost.SystemId,
+                    _appHost.ApplicationVersion.ToString());
 
+                using (var response = await _httpClient.SendAsync(new HttpRequestOptions
+                {
+
+                    Url = url,
+                    CancellationToken = CancellationToken.None,
+                    LogErrors = false,
+                    LogRequest = false
+
+                }, "GET").ConfigureAwait(false))
+                {
+
+                }
+            }
+            catch
+            {
+
+            }
+        }
+
+        public object Get(GetStartupInfo request)
+        {
             return new StartupInfo
             {
-                SupportsRunningAsService = info.SupportsRunningAsService,
                 HasMediaEncoder = !string.IsNullOrWhiteSpace(_mediaEncoder.EncoderPath)
             };
         }
@@ -90,22 +128,18 @@ namespace MediaBrowser.Api
             return result;
         }
 
-        private void SetWizardFinishValues(ServerConfiguration config)
-        {
-            config.EnableStandaloneMusicKeys = true;
-            config.EnableCaseSensitiveItemIds = true;
-            config.SkipDeserializationForBasicTypes = true;
-            config.EnableLocalizedGuids = true;
-            config.EnableSimpleArtistDetection = true;
-            config.EnableNormalizedItemByNameIds = true;
-            config.DisableLiveTvChannelUserDataName = true;
-        }
-
         public void Post(UpdateStartupConfiguration request)
         {
             _config.Configuration.UICulture = request.UICulture;
             _config.Configuration.MetadataCountryCode = request.MetadataCountryCode;
             _config.Configuration.PreferredMetadataLanguage = request.PreferredMetadataLanguage;
+            _config.SaveConfiguration();
+        }
+
+        public void Post(UpdateRemoteAccessConfiguration request)
+        {
+            _config.Configuration.EnableRemoteAccess = request.EnableRemoteAccess;
+            _config.Configuration.EnableUPnP = request.EnableAutomaticPortMapping;
             _config.SaveConfiguration();
         }
 
@@ -125,7 +159,7 @@ namespace MediaBrowser.Api
             var user = _userManager.Users.First();
 
             user.Name = request.Name;
-            await _userManager.UpdateUser(user).ConfigureAwait(false);
+            _userManager.UpdateUser(user);
 
             var result = new UpdateStartupUserResult();
 
@@ -152,7 +186,6 @@ namespace MediaBrowser.Api
 
     public class StartupInfo
     {
-        public bool SupportsRunningAsService { get; set; }
         public bool HasMediaEncoder { get; set; }
     }
 

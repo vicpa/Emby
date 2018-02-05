@@ -24,7 +24,7 @@ namespace Emby.Server.Implementations.Library
             _channelManager = channelManager;
         }
 
-        public async Task Run(IProgress<double> progress, CancellationToken cancellationToken)
+        public Task Run(IProgress<double> progress, CancellationToken cancellationToken)
         {
             var items = _libraryManager.GetItemList(new InternalItemsQuery
             {
@@ -45,7 +45,6 @@ namespace Emby.Server.Implementations.Library
                 TrailerTypes = trailerTypes,
                 Recursive = true,
                 DtoOptions = new DtoOptions(false)
-
             });
 
             var numComplete = 0;
@@ -54,7 +53,7 @@ namespace Emby.Server.Implementations.Library
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                await AssignTrailers(item, trailers).ConfigureAwait(false);
+                AssignTrailers(item, trailers);
 
                 numComplete++;
                 double percent = numComplete;
@@ -63,9 +62,11 @@ namespace Emby.Server.Implementations.Library
             }
 
             progress.Report(100);
+
+            return Task.CompletedTask;
         }
 
-        private async Task AssignTrailers(IHasTrailers item, IEnumerable<BaseItem> channelTrailers)
+        private void AssignTrailers(IHasTrailers item, IEnumerable<BaseItem> channelTrailers)
         {
             if (item is Game)
             {
@@ -98,8 +99,7 @@ namespace Emby.Server.Implementations.Library
                 item.RemoteTrailerIds = trailerIds;
 
                 var baseItem = (BaseItem)item;
-                await baseItem.UpdateToRepository(ItemUpdateType.MetadataImport, CancellationToken.None)
-                        .ConfigureAwait(false);
+                baseItem.UpdateToRepository(ItemUpdateType.MetadataImport, CancellationToken.None);
             }
         }
     }

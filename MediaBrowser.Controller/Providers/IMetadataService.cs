@@ -1,4 +1,5 @@
-﻿using MediaBrowser.Controller.Entities;
+﻿using System;
+using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,7 +13,8 @@ namespace MediaBrowser.Controller.Providers
         /// </summary>
         /// <param name="item">The item.</param>
         /// <returns><c>true</c> if this instance can refresh the specified item; otherwise, <c>false</c>.</returns>
-        bool CanRefresh(IHasMetadata item);
+        bool CanRefresh(BaseItem item);
+        bool CanRefreshPrimary(Type type);
 
         /// <summary>
         /// Refreshes the metadata.
@@ -21,7 +23,7 @@ namespace MediaBrowser.Controller.Providers
         /// <param name="refreshOptions">The options.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>Task.</returns>
-        Task<ItemUpdateType> RefreshMetadata(IHasMetadata item, MetadataRefreshOptions refreshOptions, CancellationToken cancellationToken);
+        Task<ItemUpdateType> RefreshMetadata(BaseItem item, MetadataRefreshOptions refreshOptions, CancellationToken cancellationToken);
 
         /// <summary>
         /// Gets the order.

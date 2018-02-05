@@ -4,7 +4,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using Emby.Server.Implementations.Data;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Security;
@@ -35,7 +34,7 @@ namespace Emby.Server.Implementations.Security
 
                 string[] queries = {
 
-                               "create table if not exists AccessTokens (Id GUID PRIMARY KEY, AccessToken TEXT NOT NULL, DeviceId TEXT, AppName TEXT, AppVersion TEXT, DeviceName TEXT, UserId TEXT, IsActive BIT, DateCreated DATETIME NOT NULL, DateRevoked DATETIME)",
+                               "create table if not exists AccessTokens (Id GUID PRIMARY KEY NOT NULL, AccessToken TEXT NOT NULL, DeviceId TEXT NOT NULL, AppName TEXT NOT NULL, AppVersion TEXT NOT NULL, DeviceName TEXT NOT NULL, UserId TEXT, IsActive BIT NOT NULL, DateCreated DATETIME NOT NULL, DateRevoked DATETIME)",
                                 "create index if not exists idx_AccessTokens on AccessTokens(Id)"
                                };
 
@@ -51,14 +50,14 @@ namespace Emby.Server.Implementations.Security
             }
         }
 
-        public Task Create(AuthenticationInfo info, CancellationToken cancellationToken)
+        public void Create(AuthenticationInfo info, CancellationToken cancellationToken)
         {
             info.Id = Guid.NewGuid().ToString("N");
 
-            return Update(info, cancellationToken);
+            Update(info, cancellationToken);
         }
 
-        public async Task Update(AuthenticationInfo info, CancellationToken cancellationToken)
+        public void Update(AuthenticationInfo info, CancellationToken cancellationToken)
         {
             if (info == null)
             {
@@ -310,7 +309,7 @@ namespace Emby.Server.Implementations.Security
 
             if (reader[9].SQLiteType != SQLiteType.Null)
             {
-                info.DateRevoked = reader[9].ReadDateTime();
+                info.DateRevoked = reader[9].TryReadDateTime();
             }
 
             return info;

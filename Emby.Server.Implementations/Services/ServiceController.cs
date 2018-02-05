@@ -29,13 +29,6 @@ namespace Emby.Server.Implementations.Services
             }
         }
 
-        private Type[] GetGenericArguments(Type type)
-        {
-            return type.GetTypeInfo().IsGenericTypeDefinition
-                ? type.GetTypeInfo().GenericTypeParameters
-                : type.GetTypeInfo().GenericTypeArguments;
-        }
-
         public void RegisterService(HttpListenerHost appHost, Type serviceType)
         {
             var processedReqs = new HashSet<Type>();
@@ -50,36 +43,17 @@ namespace Emby.Server.Implementations.Services
 
                 ServiceExecGeneral.CreateServiceRunnersFor(requestType, actions);
 
-                var returnMarker = GetTypeWithGenericTypeDefinitionOf(requestType, typeof(IReturn<>));
-                var responseType = returnMarker != null ?
-                      GetGenericArguments(returnMarker)[0]
-                    : mi.ReturnType != typeof(object) && mi.ReturnType != typeof(void) ?
-                      mi.ReturnType
-                    : Type.GetType(requestType.FullName + "Response");
+                //var returnMarker = GetTypeWithGenericTypeDefinitionOf(requestType, typeof(IReturn<>));
+                //var responseType = returnMarker != null ?
+                //      GetGenericArguments(returnMarker)[0]
+                //    : mi.ReturnType != typeof(object) && mi.ReturnType != typeof(void) ?
+                //      mi.ReturnType
+                //    : Type.GetType(requestType.FullName + "Response");
 
                 RegisterRestPaths(appHost, requestType);
 
-                appHost.AddServiceInfo(serviceType, requestType, responseType);
+                appHost.AddServiceInfo(serviceType, requestType);
             }
-        }
-
-        private static Type GetTypeWithGenericTypeDefinitionOf(Type type, Type genericTypeDefinition)
-        {
-            foreach (var t in type.GetTypeInfo().ImplementedInterfaces)
-            {
-                if (t.GetTypeInfo().IsGenericType && t.GetGenericTypeDefinition() == genericTypeDefinition)
-                {
-                    return t;
-                }
-            }
-
-            var genericType = FirstGenericType(type);
-            if (genericType != null && genericType.GetGenericTypeDefinition() == genericTypeDefinition)
-            {
-                return genericType;
-            }
-
-            return null;
         }
 
         public static Type FirstGenericType(Type type)
@@ -101,11 +75,7 @@ namespace Emby.Server.Implementations.Services
             var attrs = appHost.GetRouteAttributes(requestType);
             foreach (RouteAttribute attr in attrs)
             {
-                var restPath = new RestPath(appHost.CreateInstance, appHost.GetParseFn, requestType, attr.Path, attr.Verbs, attr.Summary, attr.Notes);
-
-                if (!restPath.IsValid)
-                    throw new NotSupportedException(string.Format(
-                        "RestPath '{0}' on Type '{1}' is not Valid", attr.Path, requestType.GetMethodName()));
+                var restPath = new RestPath(appHost.CreateInstance, appHost.GetParseFn, requestType, attr.Path, attr.Verbs, attr.IsHidden, attr.Summary, attr.Description);
 
                 RegisterRestPath(restPath);
             }
@@ -118,8 +88,7 @@ namespace Emby.Server.Implementations.Services
             if (!restPath.Path.StartsWith("/"))
                 throw new ArgumentException(string.Format("Route '{0}' on '{1}' must start with a '/'", restPath.Path, restPath.RequestType.GetMethodName()));
             if (restPath.Path.IndexOfAny(InvalidRouteChars) != -1)
-                throw new ArgumentException(string.Format("Route '{0}' on '{1}' contains invalid chars. " +
-                                            "See https://github.com/ServiceStack/ServiceStack/wiki/Routing for info on valid routes.", restPath.Path, restPath.RequestType.GetMethodName()));
+                throw new ArgumentException(string.Format("Route '{0}' on '{1}' contains invalid chars. ", restPath.Path, restPath.RequestType.GetMethodName()));
 
             List<RestPath> pathsAtFirstMatch;
             if (!RestPathMap.TryGetValue(restPath.FirstMatchHashKey, out pathsAtFirstMatch))

@@ -24,11 +24,8 @@ namespace MediaBrowser.Controller.Entities
         /// <value>The date modified.</value>
         public DateTime DateModified { get; set; }
 
-        /// <summary>
-        /// Gets or sets a value indicating whether this instance is placeholder.
-        /// </summary>
-        /// <value><c>true</c> if this instance is placeholder; otherwise, <c>false</c>.</value>
-        public bool IsPlaceholder { get; set; }
+        public int Width { get; set; }
+        public int Height { get; set; }
 
         [IgnoreDataMember]
         public bool IsLocalFile

@@ -6,7 +6,6 @@ using System.Reflection;
 using System.Runtime.InteropServices.ComTypes;
 using Emby.Server.CinemaMode;
 using Emby.Server.Connect;
-using Emby.Server.Core;
 using Emby.Server.Implementations;
 using Emby.Server.Implementations.EntryPoints;
 using Emby.Server.Implementations.FFMpeg;
@@ -28,11 +27,7 @@ namespace MediaBrowser.ServerApplication
         public WindowsAppHost(ServerApplicationPaths applicationPaths, ILogManager logManager, StartupOptions options, IFileSystem fileSystem, IPowerManagement powerManagement, string releaseAssetFilename, IEnvironmentInfo environmentInfo, MediaBrowser.Controller.Drawing.IImageEncoder imageEncoder, ISystemEvents systemEvents, MediaBrowser.Common.Net.INetworkManager networkManager)
             : base(applicationPaths, logManager, options, fileSystem, powerManagement, releaseAssetFilename, environmentInfo, imageEncoder, systemEvents, networkManager)
         {
-        }
-
-        public override bool IsRunningAsService
-        {
-            get { return MainStartup.IsRunningAsService; }
+            fileSystem.AddShortcutHandler(new LnkShortcutHandler());
         }
 
         protected override IConnectManager CreateConnectManager()
@@ -107,14 +102,6 @@ namespace MediaBrowser.ServerApplication
             {
                 //Remove our shortcut from the startup folder for this user
                 FileSystemManager.DeleteFile(Path.Combine(startupPath, "Emby Server.lnk"));
-            }
-        }
-
-        public override bool SupportsRunningAsService
-        {
-            get
-            {
-                return true;
             }
         }
 

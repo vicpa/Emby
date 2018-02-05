@@ -3,8 +3,9 @@ using MediaBrowser.Controller.Net;
 using MediaBrowser.Controller.Security;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using MediaBrowser.Model.Services;
+using System.Linq;
+using System.Threading;
 
 namespace Emby.Server.Implementations.HttpServer.Security
 {
@@ -21,11 +22,10 @@ namespace Emby.Server.Implementations.HttpServer.Security
 
         public AuthorizationInfo GetAuthorizationInfo(object requestContext)
         {
-            var req = new ServiceRequest((IRequest)requestContext);
-            return GetAuthorizationInfo(req);
+            return GetAuthorizationInfo((IRequest)requestContext);
         }
 
-        public AuthorizationInfo GetAuthorizationInfo(IServiceRequest requestContext)
+        public AuthorizationInfo GetAuthorizationInfo(IRequest requestContext)
         {
             object cached;
             if (requestContext.Items.TryGetValue("AuthorizationInfo", out cached))
@@ -41,7 +41,7 @@ namespace Emby.Server.Implementations.HttpServer.Security
         /// </summary>
         /// <param name="httpReq">The HTTP req.</param>
         /// <returns>Dictionary{System.StringSystem.String}.</returns>
-        private AuthorizationInfo GetAuthorization(IServiceRequest httpReq)
+        private AuthorizationInfo GetAuthorization(IRequest httpReq)
         {
             var auth = GetAuthorizationDictionary(httpReq);
 
@@ -90,28 +90,49 @@ namespace Emby.Server.Implementations.HttpServer.Security
                     AccessToken = token
                 });
 
-                var tokenInfo = result.Items.FirstOrDefault();
+                var tokenInfo = result.Items.Length > 0 ? result.Items[0] : null;
 
                 if (tokenInfo != null)
                 {
                     info.UserId = tokenInfo.UserId;
+
+                    var updateToken = false;
 
                     // TODO: Remove these checks for IsNullOrWhiteSpace
                     if (string.IsNullOrWhiteSpace(info.Client))
                     {
                         info.Client = tokenInfo.AppName;
                     }
-                    if (string.IsNullOrWhiteSpace(info.Device))
-                    {
-                        info.Device = tokenInfo.DeviceName;
-                    }
+
                     if (string.IsNullOrWhiteSpace(info.DeviceId))
                     {
                         info.DeviceId = tokenInfo.DeviceId;
                     }
+
+
+                    if (string.IsNullOrWhiteSpace(info.Device))
+                    {
+                        info.Device = tokenInfo.DeviceName;
+                    }
+                    else if (!string.Equals(info.Device, tokenInfo.DeviceName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        updateToken = true;
+                        tokenInfo.DeviceName = info.Device;
+                    }
+
                     if (string.IsNullOrWhiteSpace(info.Version))
                     {
                         info.Version = tokenInfo.AppVersion;
+                    }
+                    else if (!string.Equals(info.Version, tokenInfo.AppVersion, StringComparison.OrdinalIgnoreCase))
+                    {
+                        updateToken = true;
+                        tokenInfo.AppVersion = info.Version;
+                    }
+
+                    if (updateToken)
+                    {
+                        _authRepo.Update(tokenInfo, CancellationToken.None);
                     }
                 }
                 else
@@ -135,7 +156,7 @@ namespace Emby.Server.Implementations.HttpServer.Security
         /// </summary>
         /// <param name="httpReq">The HTTP req.</param>
         /// <returns>Dictionary{System.StringSystem.String}.</returns>
-        private Dictionary<string, string> GetAuthorizationDictionary(IServiceRequest httpReq)
+        private Dictionary<string, string> GetAuthorizationDictionary(IRequest httpReq)
         {
             var auth = httpReq.Headers["X-Emby-Authorization"];
 
@@ -161,7 +182,7 @@ namespace Emby.Server.Implementations.HttpServer.Security
             // There should be at least to parts
             if (parts.Length != 2) return null;
 
-            var acceptedNames = new[] { "MediaBrowser", "Emby"};
+            var acceptedNames = new[] { "MediaBrowser", "Emby" };
 
             // It has to be a digest request
             if (!acceptedNames.Contains(parts[0] ?? string.Empty, StringComparer.OrdinalIgnoreCase))

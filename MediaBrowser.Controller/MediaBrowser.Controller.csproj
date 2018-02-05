@@ -89,6 +89,7 @@
     <Compile Include="Entities\Audio\AudioPodcast.cs" />
     <Compile Include="Entities\Audio\IHasAlbumArtist.cs" />
     <Compile Include="Entities\Audio\IHasMusicGenres.cs" />
+    <Compile Include="Entities\BaseItemExtensions.cs" />
     <Compile Include="Entities\Book.cs" />
     <Compile Include="Configuration\IServerConfigurationManager.cs" />
     <Compile Include="Entities\Audio\MusicGenre.cs" />
@@ -106,7 +107,6 @@
     <Compile Include="Entities\IHasSpecialFeatures.cs" />
     <Compile Include="Entities\IHasStartDate.cs" />
     <Compile Include="Entities\IHasTrailers.cs" />
-    <Compile Include="Entities\IHasUserData.cs" />
     <Compile Include="Entities\IHiddenFromDisplay.cs" />
     <Compile Include="Entities\IItemByName.cs" />
     <Compile Include="Entities\IMetadataContainer.cs" />
@@ -127,6 +127,7 @@
     <Compile Include="Entities\UserViewBuilder.cs" />
     <Compile Include="Extensions\StringExtensions.cs" />
     <Compile Include="IO\StreamHelper.cs" />
+    <Compile Include="IResourceFileManager.cs" />
     <Compile Include="Library\DeleteOptions.cs" />
     <Compile Include="Library\ILibraryPostScanTask.cs" />
     <Compile Include="Library\IMediaSourceManager.cs" />
@@ -145,7 +146,6 @@
     <Compile Include="Library\UserDataSaveEventArgs.cs" />
     <Compile Include="LiveTv\IListingsProvider.cs" />
     <Compile Include="LiveTv\ITunerHost.cs" />
-    <Compile Include="LiveTv\LiveStream.cs" />
     <Compile Include="LiveTv\RecordingGroup.cs" />
     <Compile Include="LiveTv\RecordingStatusChangedEventArgs.cs" />
     <Compile Include="LiveTv\ILiveTvRecording.cs" />
@@ -177,20 +177,19 @@
     <Compile Include="MediaEncoding\MediaStreamSelector.cs" />
     <Compile Include="Net\AuthenticatedAttribute.cs" />
     <Compile Include="Net\AuthorizationInfo.cs" />
+    <Compile Include="Net\BasePeriodicWebSocketListener.cs" />
     <Compile Include="Net\IAuthorizationContext.cs" />
     <Compile Include="Net\IAuthService.cs" />
     <Compile Include="Net\IHasResultFactory.cs" />
     <Compile Include="Net\IHttpResultFactory.cs" />
     <Compile Include="Net\IHttpServer.cs" />
     <Compile Include="Net\IServerManager.cs" />
-    <Compile Include="Net\IServiceRequest.cs" />
     <Compile Include="Net\ISessionContext.cs" />
     <Compile Include="Net\IWebSocket.cs" />
     <Compile Include="Net\IWebSocketConnection.cs" />
     <Compile Include="Net\IWebSocketListener.cs" />
     <Compile Include="Net\LoggedAttribute.cs" />
     <Compile Include="Net\SecurityException.cs" />
-    <Compile Include="Net\ServiceRequest.cs" />
     <Compile Include="Net\StaticResultOptions.cs" />
     <Compile Include="Net\WebSocketConnectEventArgs.cs" />
     <Compile Include="Net\WebSocketMessageInfo.cs" />
@@ -222,8 +221,6 @@
     <Compile Include="Providers\IExternalId.cs" />
     <Compile Include="Providers\IExtrasProvider.cs" />
     <Compile Include="Providers\IForcedProvider.cs" />
-    <Compile Include="Providers\IHasChangeMonitor.cs" />
-    <Compile Include="Entities\IHasMetadata.cs" />
     <Compile Include="Providers\IHasItemChangeMonitor.cs" />
     <Compile Include="Providers\IHasLookupInfo.cs" />
     <Compile Include="Providers\IHasOrder.cs" />
@@ -250,7 +247,6 @@
     <Compile Include="Providers\RemoteSearchQuery.cs" />
     <Compile Include="Providers\SeasonInfo.cs" />
     <Compile Include="Providers\SeriesInfo.cs" />
-    <Compile Include="Providers\SeriesOrderTypes.cs" />
     <Compile Include="Providers\SongInfo.cs" />
     <Compile Include="Providers\TrailerInfo.cs" />
     <Compile Include="Providers\VideoContentType.cs" />

@@ -34,10 +34,10 @@ namespace MediaBrowser.Providers.TV
             _fileSystem = fileSystem;
         }
 
-        public async Task Run(Series series, CancellationToken cancellationToken)
+        public async Task<bool> Run(Series series, CancellationToken cancellationToken)
         {
-            await RemoveObsoleteSeasons(series).ConfigureAwait(false);
-            
+            var seasonsRemoved = RemoveObsoleteSeasons(series);
+
             var hasNewSeasons = await AddDummySeasonFolders(series, cancellationToken).ConfigureAwait(false);
 
             if (hasNewSeasons)
@@ -49,6 +49,8 @@ namespace MediaBrowser.Providers.TV
                 //await series.ValidateChildren(new SimpleProgress<double>(), cancellationToken, new MetadataRefreshOptions(directoryService))
                 //    .ConfigureAwait(false);
             }
+
+            return seasonsRemoved || hasNewSeasons;
         }
 
         private async Task<bool> AddDummySeasonFolders(Series series, CancellationToken cancellationToken)
@@ -78,7 +80,7 @@ namespace MediaBrowser.Providers.TV
                 else if (existingSeason.IsVirtualItem)
                 {
                     existingSeason.IsVirtualItem = false;
-                    await existingSeason.UpdateToRepository(ItemUpdateType.MetadataEdit, cancellationToken).ConfigureAwait(false);
+                    existingSeason.UpdateToRepository(ItemUpdateType.MetadataEdit, cancellationToken);
                 }
             }
 
@@ -97,7 +99,7 @@ namespace MediaBrowser.Providers.TV
                 else if (existingSeason.IsVirtualItem)
                 {
                     existingSeason.IsVirtualItem = false;
-                    await existingSeason.UpdateToRepository(ItemUpdateType.MetadataEdit, cancellationToken).ConfigureAwait(false);
+                    existingSeason.UpdateToRepository(ItemUpdateType.MetadataEdit, cancellationToken);
                 }
             }
 
@@ -113,7 +115,7 @@ namespace MediaBrowser.Providers.TV
             CancellationToken cancellationToken)
         {
             var seasonName = seasonNumber == 0 ?
-                _config.Configuration.SeasonZeroDisplayName :
+                _libraryManager.GetLibraryOptions(series).SeasonZeroDisplayName :
                 (seasonNumber.HasValue ? string.Format(_localization.GetLocalizedString("NameSeasonNumber"), seasonNumber.Value.ToString(_usCulture)) : _localization.GetLocalizedString("NameSeasonUnknown"));
 
             _logger.Info("Creating Season {0} entry for {1}", seasonName, series.Name);
@@ -129,15 +131,15 @@ namespace MediaBrowser.Providers.TV
             };
 
             season.SetParent(series);
-            
-            await series.AddChild(season, cancellationToken).ConfigureAwait(false);
+
+            series.AddChild(season, cancellationToken);
 
             await season.RefreshMetadata(new MetadataRefreshOptions(_fileSystem), cancellationToken).ConfigureAwait(false);
 
             return season;
         }
 
-        private async Task<bool> RemoveObsoleteSeasons(Series series)
+        private bool RemoveObsoleteSeasons(Series series)
         {
             var existingSeasons = series.Children.OfType<Season>().ToList();
 
@@ -179,11 +181,11 @@ namespace MediaBrowser.Providers.TV
             {
                 _logger.Info("Removing virtual season {0} {1}", seasonToRemove.Series.Name, seasonToRemove.IndexNumber);
 
-                await seasonToRemove.Delete(new DeleteOptions
+                seasonToRemove.Delete(new DeleteOptions
                 {
                     DeleteFileLocation = true
 
-                }).ConfigureAwait(false);
+                }, false);
 
                 hasChanges = true;
             }

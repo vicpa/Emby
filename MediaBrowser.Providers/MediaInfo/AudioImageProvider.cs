@@ -19,7 +19,7 @@ namespace MediaBrowser.Providers.MediaInfo
     /// <summary>
     /// Uses ffmpeg to create video images
     /// </summary>
-    public class AudioImageProvider : IDynamicImageProvider, IHasItemChangeMonitor
+    public class AudioImageProvider : IDynamicImageProvider
     {
         private readonly IMediaEncoder _mediaEncoder;
         private readonly IServerConfigurationManager _config;
@@ -32,12 +32,12 @@ namespace MediaBrowser.Providers.MediaInfo
             _fileSystem = fileSystem;
         }
 
-        public IEnumerable<ImageType> GetSupportedImages(IHasMetadata item)
+        public IEnumerable<ImageType> GetSupportedImages(BaseItem item)
         {
             return new List<ImageType> { ImageType.Primary };
         }
 
-        public Task<DynamicImageResponse> GetImage(IHasMetadata item, ImageType type, CancellationToken cancellationToken)
+        public Task<DynamicImageResponse> GetImage(BaseItem item, ImageType type, CancellationToken cancellationToken)
         {
             var audio = (Audio)item;
 
@@ -92,23 +92,26 @@ namespace MediaBrowser.Providers.MediaInfo
 
         private string GetAudioImagePath(Audio item)
         {
-            var filename = item.Album ?? string.Empty;
-            filename += string.Join(",", item.Artists.ToArray(item.Artists.Count));
+            string filename = null;
 
-            if (!string.IsNullOrWhiteSpace(item.Album))
+            if (item.GetType() == typeof(Audio))
             {
-                filename += "_" + item.Album;
-            }
-            else if (!string.IsNullOrWhiteSpace(item.Name))
-            {
-                filename += "_" + item.Name;
+                if (!string.IsNullOrWhiteSpace(item.Album))
+                {
+                    filename = item.Album.GetMD5().ToString("N");
+                }
+                else
+                {
+                    filename = item.Id.ToString("N");
+                }
+
+                filename += ".jpg";
             }
             else
             {
-                filename += "_" + item.Id.ToString("N");
+                // If it's an audio book or audio podcast, allow unique image per item
+                filename = item.Id.ToString("N") + ".jpg";
             }
-
-            filename = filename.GetMD5() + ".jpg";
 
             var prefix = filename.Substring(0, 1);
 
@@ -128,25 +131,11 @@ namespace MediaBrowser.Providers.MediaInfo
             get { return "Image Extractor"; }
         }
 
-        public bool Supports(IHasMetadata item)
+        public bool Supports(BaseItem item)
         {
             var audio = item as Audio;
 
             return item.LocationType == LocationType.FileSystem && audio != null;
-        }
-
-        public bool HasChanged(IHasMetadata item, IDirectoryService directoryService)
-        {
-            if (item.EnableRefreshOnDateModifiedChange && !string.IsNullOrWhiteSpace(item.Path) && item.LocationType == LocationType.FileSystem)
-            {
-                var file = directoryService.GetFile(item.Path);
-                if (file != null && file.LastWriteTimeUtc != item.DateModified)
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
     }
 }

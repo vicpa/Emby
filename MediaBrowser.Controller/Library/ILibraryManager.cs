@@ -128,6 +128,8 @@ namespace MediaBrowser.Controller.Library
         /// </summary>
         void QueueLibraryScan();
 
+        void UpdateImages(BaseItem item);
+
         /// <summary>
         /// Gets the default view.
         /// </summary>
@@ -181,8 +183,8 @@ namespace MediaBrowser.Controller.Library
         /// <param name="sortBy">The sort by.</param>
         /// <param name="sortOrder">The sort order.</param>
         /// <returns>IEnumerable{BaseItem}.</returns>
-        IEnumerable<BaseItem> Sort(IEnumerable<BaseItem> items, User user, IEnumerable<string> sortBy,
-                                   SortOrder sortOrder);
+        IEnumerable<BaseItem> Sort(IEnumerable<BaseItem> items, User user, IEnumerable<string> sortBy, SortOrder sortOrder);
+        IEnumerable<BaseItem> Sort(IEnumerable<BaseItem> items, User user, IEnumerable<Tuple<string, SortOrder>> orderBy);
 
         /// <summary>
         /// Gets the user root folder.
@@ -193,27 +195,18 @@ namespace MediaBrowser.Controller.Library
         /// <summary>
         /// Creates the item.
         /// </summary>
-        /// <param name="item">The item.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>Task.</returns>
-        Task CreateItem(BaseItem item, CancellationToken cancellationToken);
+        void CreateItem(BaseItem item, CancellationToken cancellationToken);
 
         /// <summary>
         /// Creates the items.
         /// </summary>
-        /// <param name="items">The items.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>Task.</returns>
-        Task CreateItems(IEnumerable<BaseItem> items, CancellationToken cancellationToken);
+        void CreateItems(IEnumerable<BaseItem> items, BaseItem parent, CancellationToken cancellationToken);
 
         /// <summary>
         /// Updates the item.
         /// </summary>
-        /// <param name="item">The item.</param>
-        /// <param name="updateReason">The update reason.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>Task.</returns>
-        Task UpdateItem(BaseItem item, ItemUpdateType updateReason, CancellationToken cancellationToken);
+        void UpdateItems(List<BaseItem> items, ItemUpdateType updateReason, CancellationToken cancellationToken);
+        void UpdateItem(BaseItem item, ItemUpdateType updateReason, CancellationToken cancellationToken);
 
         /// <summary>
         /// Retrieves the item.
@@ -237,12 +230,6 @@ namespace MediaBrowser.Controller.Library
         /// Occurs when [item removed].
         /// </summary>
         event EventHandler<ItemChangeEventArgs> ItemRemoved;
-
-        /// <summary>
-        /// Reports the item removed.
-        /// </summary>
-        /// <param name="item">The item.</param>
-        void ReportItemRemoved(BaseItem item);
 
         /// <summary>
         /// Finds the type of the collection.
@@ -277,7 +264,7 @@ namespace MediaBrowser.Controller.Library
         /// </summary>
         /// <param name="paths">The paths.</param>
         /// <returns>IEnumerable{System.String}.</returns>
-        IEnumerable<FileSystemMetadata> NormalizeRootPathList(IEnumerable<FileSystemMetadata> paths);
+        List<FileSystemMetadata> NormalizeRootPathList(IEnumerable<FileSystemMetadata> paths);
 
         /// <summary>
         /// Registers the item.
@@ -288,10 +275,12 @@ namespace MediaBrowser.Controller.Library
         /// <summary>
         /// Deletes the item.
         /// </summary>
-        /// <param name="item">The item.</param>
-        /// <param name="options">The options.</param>
-        /// <returns>Task.</returns>
-        Task DeleteItem(BaseItem item, DeleteOptions options);
+        void DeleteItem(BaseItem item, DeleteOptions options, bool notifyParentItem);
+
+        /// <summary>
+        /// Deletes the item.
+        /// </summary>
+        void DeleteItem(BaseItem item, DeleteOptions options, BaseItem parent, bool notifyParentItem);
 
         /// <summary>
         /// Gets the named view.
@@ -303,7 +292,7 @@ namespace MediaBrowser.Controller.Library
         /// <param name="sortName">Name of the sort.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>Task&lt;UserView&gt;.</returns>
-        Task<UserView> GetNamedView(User user,
+        UserView GetNamedView(User user,
             string name,
             string parentId,
             string viewType,
@@ -319,7 +308,7 @@ namespace MediaBrowser.Controller.Library
         /// <param name="sortName">Name of the sort.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>Task&lt;UserView&gt;.</returns>
-        Task<UserView> GetNamedView(User user,
+        UserView GetNamedView(User user,
             string name,
             string viewType,
             string sortName,
@@ -332,8 +321,7 @@ namespace MediaBrowser.Controller.Library
         /// <param name="viewType">Type of the view.</param>
         /// <param name="sortName">Name of the sort.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>Task&lt;UserView&gt;.</returns>
-        Task<UserView> GetNamedView(string name,
+        UserView GetNamedView(string name,
             string viewType,
             string sortName,
             CancellationToken cancellationToken);
@@ -347,8 +335,7 @@ namespace MediaBrowser.Controller.Library
         /// <param name="sortName">Name of the sort.</param>
         /// <param name="uniqueId">The unique identifier.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>Task&lt;UserView&gt;.</returns>
-        Task<UserView> GetNamedView(string name,
+        UserView GetNamedView(string name,
             string parentId,
             string viewType,
             string sortName,
@@ -363,7 +350,7 @@ namespace MediaBrowser.Controller.Library
         /// <param name="sortName">Name of the sort.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>Task&lt;UserView&gt;.</returns>
-        Task<UserView> GetShadowView(BaseItem parent,
+        UserView GetShadowView(BaseItem parent,
           string viewType,
           string sortName,
           CancellationToken cancellationToken);
@@ -471,8 +458,7 @@ namespace MediaBrowser.Controller.Library
         /// </summary>
         /// <param name="item">The item.</param>
         /// <param name="people">The people.</param>
-        /// <returns>Task.</returns>
-        Task UpdatePeople(BaseItem item, List<PersonInfo> people);
+        void UpdatePeople(BaseItem item, List<PersonInfo> people);
 
         /// <summary>
         /// Gets the item ids.
@@ -513,7 +499,7 @@ namespace MediaBrowser.Controller.Library
         /// <param name="image">The image.</param>
         /// <param name="imageIndex">Index of the image.</param>
         /// <returns>Task.</returns>
-        Task<ItemImageInfo> ConvertImageToLocal(IHasMetadata item, ItemImageInfo image, int imageIndex);
+        Task<ItemImageInfo> ConvertImageToLocal(BaseItem item, ItemImageInfo image, int imageIndex);
 
         /// <summary>
         /// Gets the items.
@@ -566,8 +552,6 @@ namespace MediaBrowser.Controller.Library
         QueryResult<Tuple<BaseItem, ItemCounts>> GetAlbumArtists(InternalItemsQuery query);
         QueryResult<Tuple<BaseItem, ItemCounts>> GetAllArtists(InternalItemsQuery query);
 
-        void RegisterIgnoredPath(string path);
-        void UnRegisterIgnoredPath(string path);
         int GetCount(InternalItemsQuery query);
     }
 }

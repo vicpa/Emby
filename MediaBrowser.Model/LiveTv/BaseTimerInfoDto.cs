@@ -41,6 +41,8 @@ namespace MediaBrowser.Model.LiveTv
         /// </summary>
         public string ChannelName { get; set; }
 
+        public string ChannelPrimaryImageTag { get; set; }
+
         /// <summary>
         /// Gets or sets the program identifier.
         /// </summary>
@@ -113,7 +115,7 @@ namespace MediaBrowser.Model.LiveTv
         /// Gets or sets the parent backdrop image tags.
         /// </summary>
         /// <value>The parent backdrop image tags.</value>
-        public List<string> ParentBackdropImageTags { get; set; }
+        public string[] ParentBackdropImageTags { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether this instance is post padding required.

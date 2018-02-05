@@ -1,5 +1,4 @@
-﻿using MediaBrowser.Controller.Entities.TV;
-using MediaBrowser.Controller.Providers;
+﻿using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Configuration;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Querying;
@@ -8,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using MediaBrowser.Model.Serialization;
-using MediaBrowser.Controller.Entities.Audio;
 
 namespace MediaBrowser.Controller.Entities.Movies
 {
@@ -45,6 +43,12 @@ namespace MediaBrowser.Controller.Entities.Movies
             {
                 return false;
             }
+        }
+
+        [IgnoreDataMember]
+        public override bool SupportsPeople
+        {
+            get { return true; }
         }
 
         public Guid[] LocalTrailerIds { get; set; }
@@ -101,29 +105,6 @@ namespace MediaBrowser.Controller.Entities.Movies
         }
 
         [IgnoreDataMember]
-        public override bool IsPreSorted
-        {
-            get
-            {
-                return true;
-            }
-        }
-
-        [IgnoreDataMember]
-        protected override bool SupportsShortcutChildren
-        {
-            get
-            {
-                if (IsLegacyBoxSet)
-                {
-                    return false;
-                }
-
-                return false;
-            }
-        }
-
-        [IgnoreDataMember]
         private bool IsLegacyBoxSet
         {
             get
@@ -133,11 +114,25 @@ namespace MediaBrowser.Controller.Entities.Movies
                     return false;
                 }
 
+                if (LinkedChildren.Length > 0)
+                {
+                    return false;
+                }
+
                 return !FileSystem.ContainsSubPath(ConfigurationManager.ApplicationPaths.DataPath, Path);
             }
         }
 
-        public override bool IsAuthorizedToDelete(User user)
+        [IgnoreDataMember]
+        public override bool IsPreSorted
+        {
+            get
+            {
+                return true;
+            }
+        }
+
+        public override bool IsAuthorizedToDelete(User user, List<Folder> allCollectionFolders)
         {
             return true;
         }
@@ -147,47 +142,24 @@ namespace MediaBrowser.Controller.Entities.Movies
             return true;
         }
 
-        /// <summary>
-        /// Updates the official rating based on content and returns true or false indicating if it changed.
-        /// </summary>
-        /// <returns></returns>
-        public bool UpdateRatingToContent()
-        {
-            var currentOfficialRating = OfficialRating;
-
-            // Gather all possible ratings
-            var ratings = GetLinkedChildren()
-                .Select(i => i.OfficialRating)
-                .Where(i => !string.IsNullOrEmpty(i))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Select(i => new Tuple<string, int?>(i, LocalizationManager.GetRatingLevel(i)))
-                .OrderBy(i => i.Item2 ?? 1000)
-                .Select(i => i.Item1);
-
-            OfficialRating = ratings.FirstOrDefault() ?? currentOfficialRating;
-
-            return !string.Equals(currentOfficialRating ?? string.Empty, OfficialRating ?? string.Empty,
-                StringComparison.OrdinalIgnoreCase);
-        }
-
-        public override IEnumerable<BaseItem> GetChildren(User user, bool includeLinkedChildren)
+        public override List<BaseItem> GetChildren(User user, bool includeLinkedChildren)
         {
             var children = base.GetChildren(user, includeLinkedChildren);
 
             if (string.Equals(DisplayOrder, ItemSortBy.SortName, StringComparison.OrdinalIgnoreCase))
             {
                 // Sort by name
-                return LibraryManager.Sort(children, user, new[] { ItemSortBy.SortName }, SortOrder.Ascending);
+                return LibraryManager.Sort(children, user, new[] { ItemSortBy.SortName }, SortOrder.Ascending).ToList();
             }
 
             if (string.Equals(DisplayOrder, ItemSortBy.PremiereDate, StringComparison.OrdinalIgnoreCase))
             {
                 // Sort by release date
-                return LibraryManager.Sort(children, user, new[] { ItemSortBy.ProductionYear, ItemSortBy.PremiereDate, ItemSortBy.SortName }, SortOrder.Ascending);
+                return LibraryManager.Sort(children, user, new[] { ItemSortBy.ProductionYear, ItemSortBy.PremiereDate, ItemSortBy.SortName }, SortOrder.Ascending).ToList();
             }
 
             // Default sorting
-            return LibraryManager.Sort(children, user, new[] { ItemSortBy.ProductionYear, ItemSortBy.PremiereDate, ItemSortBy.SortName }, SortOrder.Ascending);
+            return LibraryManager.Sort(children, user, new[] { ItemSortBy.ProductionYear, ItemSortBy.PremiereDate, ItemSortBy.SortName }, SortOrder.Ascending).ToList();
         }
 
         public BoxSetInfo GetLookupInfo()
@@ -207,7 +179,7 @@ namespace MediaBrowser.Controller.Entities.Movies
 
             if (base.IsVisible(user))
             {
-                return base.GetChildren(user, true).Any();
+                return base.GetChildren(user, true).Count > 0;
             }
 
             return false;

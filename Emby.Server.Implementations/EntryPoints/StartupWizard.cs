@@ -1,7 +1,9 @@
-﻿using Emby.Server.Implementations.Browser;
+﻿using System;
+using Emby.Server.Implementations.Browser;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
 using MediaBrowser.Model.Logging;
+using MediaBrowser.Controller.Configuration;
 
 namespace Emby.Server.Implementations.EntryPoints
 {
@@ -19,15 +21,13 @@ namespace Emby.Server.Implementations.EntryPoints
         /// </summary>
         private readonly ILogger _logger;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="StartupWizard" /> class.
-        /// </summary>
-        /// <param name="appHost">The app host.</param>
-        /// <param name="logger">The logger.</param>
-        public StartupWizard(IServerApplicationHost appHost, ILogger logger)
+        private IServerConfigurationManager _config;
+
+        public StartupWizard(IServerApplicationHost appHost, ILogger logger, IServerConfigurationManager config)
         {
             _appHost = appHost;
             _logger = logger;
+            _config = config;
         }
 
         /// <summary>
@@ -35,18 +35,24 @@ namespace Emby.Server.Implementations.EntryPoints
         /// </summary>
         public void Run()
         {
+            if (!_appHost.CanLaunchWebBrowser)
+            {
+                return;
+            }
+
             if (_appHost.IsFirstRun)
             {
-                LaunchStartupWizard();
+                BrowserLauncher.OpenDashboardPage("wizardstart.html", _appHost);
             }
-        }
+            else if (_config.Configuration.IsStartupWizardCompleted && _config.Configuration.AutoRunWebApp)
+            {
+                var options = ((ApplicationHost)_appHost).StartupOptions;
 
-        /// <summary>
-        /// Launches the startup wizard.
-        /// </summary>
-        private void LaunchStartupWizard()
-        {
-            BrowserLauncher.OpenDashboardPage("wizardstart.html", _appHost);
+                if (!options.ContainsOption("-noautorunwebapp"))
+                {
+                    BrowserLauncher.OpenDashboardPage("index.html", _appHost);
+                }
+            }
         }
 
         /// <summary>
@@ -54,6 +60,7 @@ namespace Emby.Server.Implementations.EntryPoints
         /// </summary>
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
         }
     }
 }

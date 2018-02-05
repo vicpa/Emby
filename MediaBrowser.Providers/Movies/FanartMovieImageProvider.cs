@@ -24,6 +24,7 @@ using MediaBrowser.Controller.IO;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Controller.LiveTv;
 using MediaBrowser.Providers.TV;
+using MediaBrowser.Model.Extensions;
 
 namespace MediaBrowser.Providers.Movies
 {
@@ -60,12 +61,12 @@ namespace MediaBrowser.Providers.Movies
             get { return "FanArt"; }
         }
 
-        public bool Supports(IHasMetadata item)
+        public bool Supports(BaseItem item)
         {
             return item is Movie || item is BoxSet || item is MusicVideo;
         }
 
-        public IEnumerable<ImageType> GetSupportedImages(IHasMetadata item)
+        public IEnumerable<ImageType> GetSupportedImages(BaseItem item)
         {
             return new List<ImageType>
             {
@@ -79,9 +80,9 @@ namespace MediaBrowser.Providers.Movies
             };
         }
 
-        public async Task<IEnumerable<RemoteImageInfo>> GetImages(IHasMetadata item, CancellationToken cancellationToken)
+        public async Task<IEnumerable<RemoteImageInfo>> GetImages(BaseItem item, CancellationToken cancellationToken)
         {
-            var baseItem = (BaseItem)item;
+            var baseItem = item;
             var list = new List<RemoteImageInfo>();
 
             var movieId = baseItem.GetProviderId(MetadataProviders.Tmdb);
@@ -165,7 +166,6 @@ namespace MediaBrowser.Providers.Movies
             PopulateImages(list, obj.moviebackground, ImageType.Backdrop, 1920, 1080);
         }
 
-        private Regex _regex_http = new Regex("^http://");
         private void PopulateImages(List<RemoteImageInfo> list, List<Image> images, ImageType type, int width, int height)
         {
             if (images == null)
@@ -189,7 +189,7 @@ namespace MediaBrowser.Providers.Movies
                         Width = width,
                         Height = height,
                         ProviderName = Name,
-                        Url = _regex_http.Replace(url, "https://", 1),
+                        Url = url.Replace("http://", "https://", StringComparison.OrdinalIgnoreCase),
                         Language = i.lang
                     };
 
@@ -274,17 +274,20 @@ namespace MediaBrowser.Providers.Movies
 
             try
             {
-                using (var response = await _httpClient.Get(new HttpRequestOptions
+                using (var httpResponse = await _httpClient.SendAsync(new HttpRequestOptions
                 {
                     Url = url,
                     CancellationToken = cancellationToken,
                     BufferContent = true
 
-                }).ConfigureAwait(false))
+                }, "GET").ConfigureAwait(false))
                 {
-                    using (var fileStream = _fileSystem.GetFileStream(path, FileOpenMode.Create, FileAccessMode.Write, FileShareMode.Read, true))
+                    using (var response = httpResponse.Content)
                     {
-                        await response.CopyToAsync(fileStream).ConfigureAwait(false);
+                        using (var fileStream = _fileSystem.GetFileStream(path, FileOpenMode.Create, FileAccessMode.Write, FileShareMode.Read, true))
+                        {
+                            await response.CopyToAsync(fileStream).ConfigureAwait(false);
+                        }
                     }
                 }
             }

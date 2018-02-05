@@ -16,10 +16,6 @@ namespace MediaBrowser.Controller.Entities
 
         public int? Limit { get; set; }
 
-        public string[] SortBy { get; set; }
-
-        public SortOrder SortOrder { get; set; }
-
         public User User { get; set; }
 
         public BaseItem SimilarTo { get; set; }
@@ -112,7 +108,6 @@ namespace MediaBrowser.Controller.Entities
 
         public string[] ChannelIds { get; set; }
 
-        internal List<Guid> ItemIdsFromPersonFilters { get; set; }
         public int? ParentIndexNumber { get; set; }
         public int? ParentIndexNumberNotEquals { get; set; }
         public int? IndexNumber { get; set; }
@@ -164,8 +159,9 @@ namespace MediaBrowser.Controller.Entities
         public bool ForceDirect { get; set; }
         public Dictionary<string, string> ExcludeProviderIds { get; set; }
         public bool EnableGroupByMetadataKey { get; set; }
+        public bool? HasChapterImages { get; set; }
 
-        public List<Tuple<string, SortOrder>> OrderBy { get; set; }
+        public Tuple<string, SortOrder>[] OrderBy { get; set; }
 
         public DateTime? MinDateCreated { get; set; }
         public DateTime? MinDateLastSaved { get; set; }
@@ -173,6 +169,13 @@ namespace MediaBrowser.Controller.Entities
 
         public DtoOptions DtoOptions { get; set; }
         public int MinSimilarityScore { get; set; }
+        public string HasNoAudioTrackWithLanguage { get; set; }
+        public string HasNoInternalSubtitleTrackWithLanguage { get; set; }
+        public string HasNoExternalSubtitleTrackWithLanguage { get; set; }
+        public string HasNoSubtitleTrackWithLanguage { get; set; }
+        public bool? IsDeadArtist { get; set; }
+        public bool? IsDeadStudio { get; set; }
+        public bool? IsDeadPerson { get; set; }
 
         public InternalItemsQuery()
         {
@@ -190,7 +193,6 @@ namespace MediaBrowser.Controller.Entities
             BlockUnratedItems = new UnratedItem[] { };
             Tags = new string[] { };
             OfficialRatings = new string[] { };
-            SortBy = new string[] { };
             MediaTypes = new string[] { };
             IncludeItemTypes = new string[] { };
             ExcludeItemTypes = new string[] { };
@@ -213,7 +215,7 @@ namespace MediaBrowser.Controller.Entities
             TrailerTypes = new TrailerType[] { };
             SourceTypes = new SourceType[] { };
             SeriesStatuses = new SeriesStatus[] { };
-            OrderBy = new List<Tuple<string, SortOrder>>();
+            OrderBy = new Tuple<string, SortOrder>[] { };
         }
 
         public InternalItemsQuery(User user)

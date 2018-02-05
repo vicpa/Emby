@@ -27,9 +27,17 @@ namespace MediaBrowser.Controller.Entities
 
         public CollectionFolder()
         {
-            PhysicalLocationsList = new List<string>();
-            PhysicalFolderIds = new List<Guid>();
+            PhysicalLocationsList = EmptyStringArray;
+            PhysicalFolderIds = EmptyGuidArray;
         }
+
+        //public override double? GetDefaultPrimaryImageAspectRatio()
+        //{
+        //    double value = 16;
+        //    value /= 9;
+
+        //    return value;
+        //}
 
         [IgnoreDataMember]
         public override bool SupportsPlayedStatus
@@ -140,7 +148,7 @@ namespace MediaBrowser.Controller.Entities
         }
 
         [IgnoreDataMember]
-        public override IEnumerable<string> PhysicalLocations
+        public override string[] PhysicalLocations
         {
             get
             {
@@ -153,12 +161,12 @@ namespace MediaBrowser.Controller.Entities
             return true;
         }
 
-        public List<string> PhysicalLocationsList { get; set; }
-        public List<Guid> PhysicalFolderIds { get; set; }
+        public string[] PhysicalLocationsList { get; set; }
+        public Guid[] PhysicalFolderIds { get; set; }
 
         protected override FileSystemMetadata[] GetFileSystemChildren(IDirectoryService directoryService)
         {
-            return CreateResolveArgs(directoryService, true).FileSystemChildren.ToArray();
+            return CreateResolveArgs(directoryService, true).FileSystemChildren;
         }
 
         private bool _requiresRefresh;
@@ -168,9 +176,9 @@ namespace MediaBrowser.Controller.Entities
 
             if (!changed)
             {
-                var locations = PhysicalLocations.ToList();
+                var locations = PhysicalLocations;
 
-                var newLocations = CreateResolveArgs(new DirectoryService(Logger, FileSystem), false).PhysicalLocations.ToList();
+                var newLocations = CreateResolveArgs(new DirectoryService(Logger, FileSystem), false).PhysicalLocations;
 
                 if (!locations.SequenceEqual(newLocations))
                 {
@@ -180,7 +188,7 @@ namespace MediaBrowser.Controller.Entities
 
             if (!changed)
             {
-                var folderIds = PhysicalFolderIds.ToList();
+                var folderIds = PhysicalFolderIds;
 
                 var newFolderIds = GetPhysicalFolders(false).Select(i => i.Id).ToList();
 
@@ -242,34 +250,19 @@ namespace MediaBrowser.Controller.Entities
 
             LinkedChildren = linkedChildren.ToArray(linkedChildren.Count);
 
-            var folderIds = PhysicalFolderIds.ToList();
-            var newFolderIds = physicalFolders.Select(i => i.Id).ToList();
+            var folderIds = PhysicalFolderIds;
+            var newFolderIds = physicalFolders.Select(i => i.Id).ToArray();
 
             if (!folderIds.SequenceEqual(newFolderIds))
             {
                 changed = true;
                 if (setFolders)
                 {
-                    PhysicalFolderIds = newFolderIds.ToList();
+                    PhysicalFolderIds = newFolderIds;
                 }
             }
 
             return changed;
-        }
-
-        internal override bool IsValidFromResolver(BaseItem newItem)
-        {
-            var newCollectionFolder = newItem as CollectionFolder;
-
-            if (newCollectionFolder != null)
-            {
-                if (!string.Equals(CollectionType, newCollectionFolder.CollectionType, StringComparison.OrdinalIgnoreCase))
-                {
-                    return false;
-                }
-            }
-
-            return base.IsValidFromResolver(newItem);
         }
 
         private ItemResolveArgs CreateResolveArgs(IDirectoryService directoryService, bool setPhysicalLocations)
@@ -280,7 +273,7 @@ namespace MediaBrowser.Controller.Entities
             {
                 FileInfo = FileSystem.GetDirectoryInfo(path),
                 Path = path,
-                Parent = Parent,
+                Parent = GetParent() as Folder,
                 CollectionType = CollectionType
             };
 
@@ -292,24 +285,22 @@ namespace MediaBrowser.Controller.Entities
                 // When resolving the root, we need it's grandchildren (children of user views)
                 var flattenFolderDepth = isPhysicalRoot ? 2 : 0;
 
-                var fileSystemDictionary = FileData.GetFilteredFileSystemEntries(directoryService, args.Path, FileSystem, Logger, args, flattenFolderDepth: flattenFolderDepth, resolveShortcuts: isPhysicalRoot || args.IsVf);
+                var files = FileData.GetFilteredFileSystemEntries(directoryService, args.Path, FileSystem, Logger, args, flattenFolderDepth: flattenFolderDepth, resolveShortcuts: isPhysicalRoot || args.IsVf);
 
                 // Need to remove subpaths that may have been resolved from shortcuts
                 // Example: if \\server\movies exists, then strip out \\server\movies\action
                 if (isPhysicalRoot)
                 {
-                    var paths = LibraryManager.NormalizeRootPathList(fileSystemDictionary.Values);
-
-                    fileSystemDictionary = paths.ToDictionary(i => i.FullName);
+                    files = LibraryManager.NormalizeRootPathList(files).ToArray();
                 }
 
-                args.FileSystemDictionary = fileSystemDictionary;
+                args.FileSystemChildren = files;
             }
 
             _requiresRefresh = _requiresRefresh || !args.PhysicalLocations.SequenceEqual(PhysicalLocations);
             if (setPhysicalLocations)
             {
-                PhysicalLocationsList = args.PhysicalLocations.ToList();
+                PhysicalLocationsList = args.PhysicalLocations;
             }
 
             return args;

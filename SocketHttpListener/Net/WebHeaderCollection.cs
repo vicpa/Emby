@@ -35,8 +35,6 @@ namespace SocketHttpListener.Net
 		};
 
         static readonly Dictionary<string, HeaderInfo> headers;
-        HeaderInfo? headerRestriction;
-        HeaderInfo? headerConsistency;
 
         static WebHeaderCollection()
         {
@@ -108,7 +106,6 @@ namespace SocketHttpListener.Net
             if (name == null)
                 throw new ArgumentNullException("name");
 
-            ThrowIfRestricted(name);
             this.AddWithoutValidate(name, value);
         }
 
@@ -131,13 +128,13 @@ namespace SocketHttpListener.Net
             base.Add(headerName, headerValue);
         }
 
-        internal string[] GetValues_internal(string header, bool split)
+        internal List<string> GetValues_internal(string header, bool split)
         {
             if (header == null)
                 throw new ArgumentNullException("header");
 
-            string[] values = base.GetValues(header);
-            if (values == null || values.Length == 0)
+            var values = base.GetValues(header);
+            if (values == null || values.Count == 0)
                 return null;
 
             if (split && IsMultiValue(header))
@@ -155,7 +152,7 @@ namespace SocketHttpListener.Net
 
                     if (separated == null)
                     {
-                        separated = new List<string>(values.Length + 1);
+                        separated = new List<string>(values.Count + 1);
                         foreach (var v in values)
                         {
                             if (v == value)
@@ -177,13 +174,13 @@ namespace SocketHttpListener.Net
                 }
 
                 if (separated != null)
-                    return separated.ToArray(separated.Count);
+                    return separated;
             }
 
             return values;
         }
 
-        public override string[] GetValues(string header)
+        public override List<string> GetValues(string header)
         {
             return GetValues_internal(header, true);
         }
@@ -237,7 +234,6 @@ namespace SocketHttpListener.Net
             if (!IsHeaderValue(value))
                 throw new ArgumentException("invalid header value");
 
-            ThrowIfRestricted(name);
             base.Set(name, value);
         }
 
@@ -315,27 +311,6 @@ namespace SocketHttpListener.Net
                 base.Remove(name);
                 base.Set(name, value);
             }
-        }
-
-        // Private Methods
-
-        public override int Remove(string name)
-        {
-            ThrowIfRestricted(name);
-            return base.Remove(name);
-        }
-
-        protected void ThrowIfRestricted(string headerName)
-        {
-            if (!headerRestriction.HasValue)
-                return;
-
-            HeaderInfo info;
-            if (!headers.TryGetValue(headerName, out info))
-                return;
-
-            if ((info & headerRestriction.Value) != 0)
-                throw new ArgumentException("This header must be modified with the appropriate property.");
         }
 
         internal static bool IsMultiValue(string headerName)

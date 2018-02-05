@@ -22,6 +22,7 @@ using MediaBrowser.Controller.IO;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Model.Net;
 using MediaBrowser.Model.Serialization;
+using MediaBrowser.Model.Extensions;
 
 namespace MediaBrowser.Providers.Music
 {
@@ -58,12 +59,12 @@ namespace MediaBrowser.Providers.Music
             get { return "FanArt"; }
         }
 
-        public bool Supports(IHasMetadata item)
+        public bool Supports(BaseItem item)
         {
             return item is MusicArtist;
         }
 
-        public IEnumerable<ImageType> GetSupportedImages(IHasMetadata item)
+        public IEnumerable<ImageType> GetSupportedImages(BaseItem item)
         {
             return new List<ImageType>
             {
@@ -75,7 +76,7 @@ namespace MediaBrowser.Providers.Music
             };
         }
 
-        public async Task<IEnumerable<RemoteImageInfo>> GetImages(IHasMetadata item, CancellationToken cancellationToken)
+        public async Task<IEnumerable<RemoteImageInfo>> GetImages(BaseItem item, CancellationToken cancellationToken)
         {
             var artist = (MusicArtist)item;
 
@@ -151,7 +152,6 @@ namespace MediaBrowser.Providers.Music
             PopulateImages(list, obj.musicarts, ImageType.Art, 500, 281);
         }
 
-        private Regex _regex_http = new Regex("^http://");
         private void PopulateImages(List<RemoteImageInfo> list,
             List<FanartArtistImage> images,
             ImageType type,
@@ -179,7 +179,7 @@ namespace MediaBrowser.Providers.Music
                         Width = width,
                         Height = height,
                         ProviderName = Name,
-                        Url = _regex_http.Replace(url, "https://", 1),
+                        Url = url.Replace("http://", "https://", StringComparison.OrdinalIgnoreCase),
                         Language = i.lang
                     };
 
@@ -251,17 +251,20 @@ namespace MediaBrowser.Providers.Music
 
             try
             {
-                using (var response = await _httpClient.Get(new HttpRequestOptions
+                using (var httpResponse = await _httpClient.SendAsync(new HttpRequestOptions
                 {
                     Url = url,
                     CancellationToken = cancellationToken,
                     BufferContent = true
 
-                }).ConfigureAwait(false))
+                }, "GET").ConfigureAwait(false))
                 {
-                    using (var saveFileStream = _fileSystem.GetFileStream(jsonPath, FileOpenMode.Create, FileAccessMode.Write, FileShareMode.Read, true))
+                    using (var response = httpResponse.Content)
                     {
-                        await response.CopyToAsync(saveFileStream).ConfigureAwait(false);
+                        using (var saveFileStream = _fileSystem.GetFileStream(jsonPath, FileOpenMode.Create, FileAccessMode.Write, FileShareMode.Read, true))
+                        {
+                            await response.CopyToAsync(saveFileStream).ConfigureAwait(false);
+                        }
                     }
                 }
             }

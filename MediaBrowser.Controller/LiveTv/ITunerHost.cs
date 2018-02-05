@@ -36,7 +36,7 @@ namespace MediaBrowser.Controller.LiveTv
         /// <param name="streamId">The stream identifier.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>Task&lt;MediaSourceInfo&gt;.</returns>
-        Task<LiveStream> GetChannelStream(string channelId, string streamId, CancellationToken cancellationToken);
+        Task<ILiveStream> GetChannelStream(string channelId, string streamId, CancellationToken cancellationToken);
         /// <summary>
         /// Gets the channel stream media sources.
         /// </summary>
@@ -46,6 +46,10 @@ namespace MediaBrowser.Controller.LiveTv
         Task<List<MediaSourceInfo>> GetChannelStreamMediaSources(string channelId, CancellationToken cancellationToken);
 
         Task<List<TunerHostInfo>> DiscoverDevices(int discoveryDurationMs, CancellationToken cancellationToken);
+        bool IsSupported
+        {
+            get;
+        }
     }
     public interface IConfigurableTunerHost
     {
@@ -55,5 +59,18 @@ namespace MediaBrowser.Controller.LiveTv
         /// <param name="info">The information.</param>
         /// <returns>Task.</returns>
         Task Validate(TunerHostInfo info);
+    }
+
+    public interface ILiveStream
+    {
+        Task Open(CancellationToken openCancellationToken);
+        void Close();
+        int ConsumerCount { get; }
+        string OriginalStreamId { get; set; }
+        string TunerHostId { get; }
+        bool EnableStreamSharing { get; set; }
+        MediaSourceInfo OpenedMediaSource { get; set; }
+        string UniqueId { get; }
+        List<string> SharedStreamIds { get; }
     }
 }

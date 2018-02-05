@@ -3,7 +3,6 @@ using MediaBrowser.Model.Configuration;
 using MediaBrowser.Model.Entities;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Model.Serialization;
 
@@ -30,15 +29,15 @@ namespace MediaBrowser.Controller.Entities
         }
 
         [IgnoreDataMember]
-        public override bool EnableRefreshOnDateModifiedChange
+        public override bool SupportsThemeMedia
         {
             get { return true; }
         }
 
         [IgnoreDataMember]
-        public override bool SupportsThemeMedia
+        public override bool SupportsPeople
         {
-            get { return true; }
+            get { return false; }
         }
 
         /// <summary>

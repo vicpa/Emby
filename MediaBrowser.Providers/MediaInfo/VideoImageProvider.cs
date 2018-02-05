@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace MediaBrowser.Providers.MediaInfo
 {
-    public class VideoImageProvider : IDynamicImageProvider, IHasItemChangeMonitor, IHasOrder
+    public class VideoImageProvider : IDynamicImageProvider, IHasOrder
     {
         private readonly IMediaEncoder _mediaEncoder;
         private readonly ILogger _logger;
@@ -29,12 +29,12 @@ namespace MediaBrowser.Providers.MediaInfo
             _fileSystem = fileSystem;
         }
 
-        public IEnumerable<ImageType> GetSupportedImages(IHasMetadata item)
+        public IEnumerable<ImageType> GetSupportedImages(BaseItem item)
         {
             return new List<ImageType> { ImageType.Primary };
         }
 
-        public Task<DynamicImageResponse> GetImage(IHasMetadata item, ImageType type, CancellationToken cancellationToken)
+        public Task<DynamicImageResponse> GetImage(BaseItem item, ImageType type, CancellationToken cancellationToken)
         {
             var video = (Video)item;
 
@@ -129,11 +129,11 @@ namespace MediaBrowser.Providers.MediaInfo
             get { return "Screen Grabber"; }
         }
 
-        public bool Supports(IHasMetadata item)
+        public bool Supports(BaseItem item)
         {
             var video = item as Video;
 
-            if (item.LocationType == LocationType.FileSystem && video != null && !video.IsPlaceHolder && !video.IsShortcut)
+            if (item.LocationType == LocationType.FileSystem && video != null && !video.IsPlaceHolder && !video.IsShortcut && video.IsCompleteMedia)
             {
                 return true;
             }
@@ -148,20 +148,6 @@ namespace MediaBrowser.Providers.MediaInfo
                 // Make sure this comes after internet image providers
                 return 100;
             }
-        }
-
-        public bool HasChanged(IHasMetadata item, IDirectoryService directoryService)
-        {
-            if (item.EnableRefreshOnDateModifiedChange && !string.IsNullOrWhiteSpace(item.Path) && item.LocationType == LocationType.FileSystem)
-            {
-                var file = directoryService.GetFile(item.Path);
-                if (file != null && file.LastWriteTimeUtc != item.DateModified)
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
     }
 }

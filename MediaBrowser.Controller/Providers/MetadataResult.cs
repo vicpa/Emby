@@ -1,7 +1,6 @@
 using MediaBrowser.Controller.Entities;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace MediaBrowser.Controller.Providers
 {
@@ -21,6 +20,7 @@ namespace MediaBrowser.Controller.Providers
         public bool HasMetadata { get; set; }
         public T Item { get; set; }
         public string ResultLanguage { get; set; }
+        public string Provider { get; set; }
         public bool QueriedById { get; set; }
         public void AddPerson(PersonInfo p)
         {
@@ -51,7 +51,15 @@ namespace MediaBrowser.Controller.Providers
                 UserDataList = new List<UserItemData>();
             }
 
-            var userData = UserDataList.FirstOrDefault(i => string.Equals(userId, i.UserId.ToString("N"), StringComparison.OrdinalIgnoreCase));
+            UserItemData userData = null;
+
+            foreach (var i in UserDataList)
+            {
+                if (string.Equals(userId, i.UserId.ToString("N"), StringComparison.OrdinalIgnoreCase))
+                {
+                    userData = i;
+                }
+            }
 
             if (userData == null)
             {

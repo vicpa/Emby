@@ -17,9 +17,6 @@ namespace MediaBrowser.Model.Dlna
         [XmlIgnore]
         public string Id { get; set; }
 
-        [XmlIgnore]
-        public MediaBrowser.Model.Dlna.DeviceProfileType ProfileType { get; set; }
-
         /// <summary>
         /// Gets or sets the identification.
         /// </summary>
@@ -117,20 +114,14 @@ namespace MediaBrowser.Model.Dlna
             MusicStreamingTranscodingBitrate = 128000;
         }
 
-        public List<string> GetSupportedMediaTypes()
+        public string[] GetSupportedMediaTypes()
         {
-            List<string> list = new List<string>();
-            foreach (string i in (SupportedMediaTypes ?? string.Empty).Split(','))
-            {
-                if (!string.IsNullOrEmpty(i))
-                    list.Add(i);
-            }
-            return list;
+            return ContainerProfile.SplitValue(SupportedMediaTypes);
         }
 
         public TranscodingProfile GetAudioTranscodingProfile(string container, string audioCodec)
         {
-            container = StringHelper.TrimStart(container ?? string.Empty, '.');
+            container = (container ?? string.Empty).TrimStart('.');
 
             foreach (var i in TranscodingProfiles)
             {
@@ -156,7 +147,7 @@ namespace MediaBrowser.Model.Dlna
 
         public TranscodingProfile GetVideoTranscodingProfile(string container, string audioCodec, string videoCodec)
         {
-            container = StringHelper.TrimStart(container ?? string.Empty, '.');
+            container = (container ?? string.Empty).TrimStart('.');
 
             foreach (var i in TranscodingProfiles)
             {
@@ -199,8 +190,8 @@ namespace MediaBrowser.Model.Dlna
                     continue;
                 }
 
-                List<string> audioCodecs = i.GetAudioCodecs();
-                if (audioCodecs.Count > 0 && !ListHelper.ContainsIgnoreCase(audioCodecs, audioCodec ?? string.Empty))
+                var audioCodecs = i.GetAudioCodecs();
+                if (audioCodecs.Length > 0 && !ListHelper.ContainsIgnoreCase(audioCodecs, audioCodec ?? string.Empty))
                 {
                     continue;
                 }
@@ -306,14 +297,14 @@ namespace MediaBrowser.Model.Dlna
                     continue;
                 }
 
-                List<string> audioCodecs = i.GetAudioCodecs();
-                if (audioCodecs.Count > 0 && !ListHelper.ContainsIgnoreCase(audioCodecs, audioCodec ?? string.Empty))
+                var audioCodecs = i.GetAudioCodecs();
+                if (audioCodecs.Length > 0 && !ListHelper.ContainsIgnoreCase(audioCodecs, audioCodec ?? string.Empty))
                 {
                     continue;
                 }
 
-                List<string> videoCodecs = i.GetVideoCodecs();
-                if (videoCodecs.Count > 0 && !ListHelper.ContainsIgnoreCase(videoCodecs, videoCodec ?? string.Empty))
+                var videoCodecs = i.GetVideoCodecs();
+                if (videoCodecs.Length > 0 && !ListHelper.ContainsIgnoreCase(videoCodecs, videoCodec ?? string.Empty))
                 {
                     continue;
                 }

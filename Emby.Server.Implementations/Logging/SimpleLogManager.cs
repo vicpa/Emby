@@ -107,12 +107,13 @@ namespace Emby.Server.Implementations.Logging
             }
 
             _fileLogger = null;
+            GC.SuppressFinalize(this);
         }
     }
 
     public class FileLogger : IDisposable
     {
-        private readonly Stream _fileStream;
+        private readonly FileStream _fileStream;
 
         private bool _disposed;
         private readonly CancellationTokenSource _cancellationTokenSource;
@@ -122,7 +123,7 @@ namespace Emby.Server.Implementations.Logging
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path));
 
-            _fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read);
+            _fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read, 32768);
             _cancellationTokenSource = new CancellationTokenSource();
 
             Task.Factory.StartNew(LogInternal, _cancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
@@ -130,23 +131,21 @@ namespace Emby.Server.Implementations.Logging
 
         private void LogInternal()
         {
-            while (!_cancellationTokenSource.IsCancellationRequested)
+            while (!_cancellationTokenSource.IsCancellationRequested && !_disposed)
             {
                 try
                 {
-                    var any = false;
-
                     foreach (var message in _queue.GetConsumingEnumerable())
                     {
                         var bytes = Encoding.UTF8.GetBytes(message + Environment.NewLine);
+                        if (_disposed)
+                        {
+                            return;
+                        }
+
                         _fileStream.Write(bytes, 0, bytes.Length);
 
-                        any = true;
-                    }
-
-                    if (any)
-                    {
-                        _fileStream.Flush();
+                        _fileStream.Flush(true);
                     }
                 }
                 catch
@@ -173,17 +172,18 @@ namespace Emby.Server.Implementations.Logging
                 return;
             }
 
-            _fileStream.Flush();
+            _fileStream.Flush(true);
         }
 
         public void Dispose()
         {
             _cancellationTokenSource.Cancel();
 
-            _disposed = true;
+            Flush();
 
-            _fileStream.Flush();
+            _disposed = true;
             _fileStream.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 

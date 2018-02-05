@@ -14,7 +14,7 @@ namespace MediaBrowser.Model.Net
         /// <summary>
         /// Any extension in this list is considered a video file - can be added to at runtime for extensibility
         /// </summary>
-        private static readonly List<string> VideoFileExtensions = new List<string>
+        private static readonly string[] VideoFileExtensions = new string[]
             {
                 ".mkv",
                 ".m2t",
@@ -86,6 +86,14 @@ namespace MediaBrowser.Model.Net
             dict.Add(".avi", "video/x-msvideo");
             dict.Add(".asf", "video/x-ms-asf");
             dict.Add(".m4v", "video/x-m4v");
+            dict.Add(".cbz", "application/epub+zip");
+            dict.Add(".cbr", "application/epub+zip");
+            dict.Add(".epub", "application/epub+zip");
+            dict.Add(".pdf", "application/pdf");
+            dict.Add(".mobi", "application/x-mobipocket-ebook");
+
+            dict.Add(".ass", "text/x-ssa");
+            dict.Add(".ssa", "text/x-ssa");
 
             return dict;
         }
@@ -177,28 +185,6 @@ namespace MediaBrowser.Model.Net
             if (StringHelper.EqualsIgnoreCase(ext, ".xml"))
             {
                 return "application/xml";
-            }
-
-            // Type document
-            if (StringHelper.EqualsIgnoreCase(ext, ".pdf"))
-            {
-                return "application/pdf";
-            }
-            if (StringHelper.EqualsIgnoreCase(ext, ".mobi"))
-            {
-                return "application/x-mobipocket-ebook";
-            }
-            if (StringHelper.EqualsIgnoreCase(ext, ".epub"))
-            {
-                return "application/epub+zip";
-            }
-            if (StringHelper.EqualsIgnoreCase(ext, ".cbz"))
-            {
-                return "application/epub+zip";
-            }
-            if (StringHelper.EqualsIgnoreCase(ext, ".cbr"))
-            {
-                return "application/epub+zip";
             }
 
             // Type audio

@@ -39,6 +39,14 @@ namespace Emby.Server.Implementations.LiveTv.TunerHosts
             FileSystem = fileSystem;
         }
 
+        public virtual bool IsSupported
+        {
+            get
+            {
+                return true;
+            }
+        }
+
         protected abstract Task<List<ChannelInfo>> GetChannelsInternal(TunerHostInfo tuner, CancellationToken cancellationToken);
         public abstract string Type { get; }
 
@@ -142,8 +150,6 @@ namespace Emby.Server.Implementations.LiveTv.TunerHosts
             {
                 var hosts = GetTunerHosts();
 
-                var hostsWithChannel = new List<TunerHostInfo>();
-
                 foreach (var host in hosts)
                 {
                     try
@@ -152,7 +158,7 @@ namespace Emby.Server.Implementations.LiveTv.TunerHosts
 
                         if (channels.Any(i => string.Equals(i.Id, channelId, StringComparison.OrdinalIgnoreCase)))
                         {
-                            hostsWithChannel.Add(host);
+                            return await GetChannelStreamMediaSources(host, channelId, cancellationToken).ConfigureAwait(false);
                         }
                     }
                     catch (Exception ex)
@@ -160,42 +166,14 @@ namespace Emby.Server.Implementations.LiveTv.TunerHosts
                         Logger.Error("Error getting channels", ex);
                     }
                 }
-
-                foreach (var host in hostsWithChannel)
-                {
-                    try
-                    {
-                        // Check to make sure the tuner is available
-                        // If there's only one tuner, don't bother with the check and just let the tuner be the one to throw an error
-                        if (hostsWithChannel.Count > 1 && !await IsAvailable(host, channelId, cancellationToken).ConfigureAwait(false))
-                        {
-                            Logger.Error("Tuner is not currently available");
-                            continue;
-                        }
-
-                        var mediaSources = await GetChannelStreamMediaSources(host, channelId, cancellationToken).ConfigureAwait(false);
-
-                        // Prefix the id with the host Id so that we can easily find it
-                        foreach (var mediaSource in mediaSources)
-                        {
-                            mediaSource.Id = host.Id + mediaSource.Id;
-                        }
-
-                        return mediaSources;
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Error("Error opening tuner", ex);
-                    }
-                }
             }
 
             return new List<MediaSourceInfo>();
         }
 
-        protected abstract Task<LiveStream> GetChannelStream(TunerHostInfo tuner, string channelId, string streamId, CancellationToken cancellationToken);
+        protected abstract Task<ILiveStream> GetChannelStream(TunerHostInfo tuner, string channelId, string streamId, CancellationToken cancellationToken);
 
-        public async Task<LiveStream> GetChannelStream(string channelId, string streamId, CancellationToken cancellationToken)
+        public async Task<ILiveStream> GetChannelStream(string channelId, string streamId, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(channelId))
             {
@@ -213,27 +191,18 @@ namespace Emby.Server.Implementations.LiveTv.TunerHosts
 
             foreach (var host in hosts)
             {
-                if (string.IsNullOrWhiteSpace(streamId))
+                try
                 {
-                    try
-                    {
-                        var channels = await GetChannels(host, true, cancellationToken).ConfigureAwait(false);
+                    var channels = await GetChannels(host, true, cancellationToken).ConfigureAwait(false);
 
-                        if (channels.Any(i => string.Equals(i.Id, channelId, StringComparison.OrdinalIgnoreCase)))
-                        {
-                            hostsWithChannel.Add(host);
-                        }
-                    }
-                    catch (Exception ex)
+                    if (channels.Any(i => string.Equals(i.Id, channelId, StringComparison.OrdinalIgnoreCase)))
                     {
-                        Logger.Error("Error getting channels", ex);
+                        hostsWithChannel.Add(host);
                     }
                 }
-                else if (streamId.StartsWith(host.Id, StringComparison.OrdinalIgnoreCase))
+                catch (Exception ex)
                 {
-                    hostsWithChannel = new List<TunerHostInfo> { host };
-                    streamId = streamId.Substring(host.Id.Length);
-                    break;
+                    Logger.Error("Error getting channels", ex);
                 }
             }
 
@@ -247,7 +216,10 @@ namespace Emby.Server.Implementations.LiveTv.TunerHosts
                 try
                 {
                     var liveStream = await GetChannelStream(host, channelId, streamId, cancellationToken).ConfigureAwait(false);
+                    var startTime = DateTime.UtcNow;
                     await liveStream.Open(cancellationToken).ConfigureAwait(false);
+                    var endTime = DateTime.UtcNow;
+                    Logger.Info("Live stream opened after {0}ms", (endTime - startTime).TotalMilliseconds);
                     return liveStream;
                 }
                 catch (Exception ex)
@@ -258,21 +230,6 @@ namespace Emby.Server.Implementations.LiveTv.TunerHosts
 
             throw new LiveTvConflictException();
         }
-
-        protected async Task<bool> IsAvailable(TunerHostInfo tuner, string channelId, CancellationToken cancellationToken)
-        {
-            try
-            {
-                return await IsAvailableInternal(tuner, channelId, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Logger.ErrorException("Error checking tuner availability", ex);
-                return false;
-            }
-        }
-
-        protected abstract Task<bool> IsAvailableInternal(TunerHostInfo tuner, string channelId, CancellationToken cancellationToken);
 
         protected virtual string ChannelIdPrefix
         {

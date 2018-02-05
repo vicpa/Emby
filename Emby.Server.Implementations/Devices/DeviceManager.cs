@@ -18,7 +18,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Controller.Configuration;
-using MediaBrowser.Controller.IO;
+using MediaBrowser.Controller.Entities;
 
 namespace Emby.Server.Implementations.Devices
 {
@@ -50,40 +50,71 @@ namespace Emby.Server.Implementations.Devices
             _network = network;
         }
 
-        public async Task<DeviceInfo> RegisterDevice(string reportedId, string name, string appName, string appVersion, string usedByUserId)
+        public DeviceInfo RegisterDevice(string reportedId, string name, string appName, string appVersion, string usedByUserId, string usedByUserName)
         {
             if (string.IsNullOrWhiteSpace(reportedId))
             {
                 throw new ArgumentNullException("reportedId");
             }
 
-            var device = GetDevice(reportedId) ?? new DeviceInfo
-            {
-                Id = reportedId
-            };
+            var save = false;
+            var device = GetDevice(reportedId);
 
-            device.ReportedName = name;
-            device.AppName = appName;
-            device.AppVersion = appVersion;
+            if (device == null)
+            {
+                device = new DeviceInfo
+                {
+                    Id = reportedId
+                };
+                save = true;
+            }
+
+            if (!string.Equals(device.ReportedName, name, StringComparison.Ordinal))
+            {
+                device.ReportedName = name;
+                save = true;
+            }
+            if (!string.Equals(device.AppName, appName, StringComparison.Ordinal))
+            {
+                device.AppName = appName;
+                save = true;
+            }
+            if (!string.Equals(device.AppVersion, appVersion, StringComparison.Ordinal))
+            {
+                device.AppVersion = appVersion;
+                save = true;
+            }
 
             if (!string.IsNullOrWhiteSpace(usedByUserId))
             {
-                var user = _userManager.GetUserById(usedByUserId);
-
-                device.LastUserId = user.Id.ToString("N");
-                device.LastUserName = user.Name;
+                if (!string.Equals(device.LastUserId, usedByUserId, StringComparison.Ordinal) ||
+                    !string.Equals(device.LastUserName, usedByUserName, StringComparison.Ordinal))
+                {
+                    device.LastUserId = usedByUserId;
+                    device.LastUserName = usedByUserName;
+                    save = true;
+                }
             }
 
-            device.DateLastModified = DateTime.UtcNow;
+            var displayName = string.IsNullOrWhiteSpace(device.CustomName) ? device.ReportedName : device.CustomName;
+            if (!string.Equals(device.Name, displayName, StringComparison.Ordinal))
+            {
+                device.Name = displayName;
+                save = true;
+            }
 
-            await _repo.SaveDevice(device).ConfigureAwait(false);
+            if (save)
+            {
+                device.DateLastModified = DateTime.UtcNow;
+                _repo.SaveDevice(device);
+            }
 
             return device;
         }
 
-        public Task SaveCapabilities(string reportedId, ClientCapabilities capabilities)
+        public void SaveCapabilities(string reportedId, ClientCapabilities capabilities)
         {
-            return _repo.SaveCapabilities(reportedId, capabilities);
+            _repo.SaveCapabilities(reportedId, capabilities);
         }
 
         public ClientCapabilities GetCapabilities(string reportedId)
@@ -98,13 +129,13 @@ namespace Emby.Server.Implementations.Devices
 
         public QueryResult<DeviceInfo> GetDevices(DeviceQuery query)
         {
-            IEnumerable<DeviceInfo> devices = _repo.GetDevices().OrderByDescending(i => i.DateLastModified);
+            IEnumerable<DeviceInfo> devices = _repo.GetDevices();
 
             if (query.SupportsSync.HasValue)
             {
                 var val = query.SupportsSync.Value;
 
-                devices = devices.Where(i => GetCapabilities(i.Id).SupportsSync == val);
+                devices = devices.Where(i => i.Capabilities.SupportsSync == val);
             }
 
             if (query.SupportsPersistentIdentifier.HasValue)
@@ -113,15 +144,16 @@ namespace Emby.Server.Implementations.Devices
 
                 devices = devices.Where(i =>
                 {
-                    var caps = GetCapabilities(i.Id);
-                    var deviceVal = caps.SupportsPersistentIdentifier;
+                    var deviceVal = i.Capabilities.SupportsPersistentIdentifier;
                     return deviceVal == val;
                 });
             }
 
             if (!string.IsNullOrWhiteSpace(query.UserId))
             {
-                devices = devices.Where(i => CanAccessDevice(query.UserId, i.Id));
+                var user = _userManager.GetUserById(query.UserId);
+
+                devices = devices.Where(i => CanAccessDevice(user, i.Id));
             }
 
             var array = devices.ToArray();
@@ -132,9 +164,9 @@ namespace Emby.Server.Implementations.Devices
             };
         }
 
-        public Task DeleteDevice(string id)
+        public void DeleteDevice(string id)
         {
-            return _repo.DeleteDevice(id);
+            _repo.DeleteDevice(id);
         }
 
         public ContentUploadHistory GetCameraUploadHistory(string deviceId)
@@ -213,34 +245,29 @@ namespace Emby.Server.Implementations.Devices
             get { return Path.Combine(_config.CommonApplicationPaths.DataPath, "camerauploads"); }
         }
 
-        public async Task UpdateDeviceInfo(string id, DeviceOptions options)
+        public void UpdateDeviceInfo(string id, DeviceOptions options)
         {
             var device = GetDevice(id);
 
             device.CustomName = options.CustomName;
             device.CameraUploadPath = options.CameraUploadPath;
 
-            await _repo.SaveDevice(device).ConfigureAwait(false);
+            device.Name = string.IsNullOrWhiteSpace(device.CustomName) ? device.ReportedName : device.CustomName;
+
+            _repo.SaveDevice(device);
 
             EventHelper.FireEventIfNotNull(DeviceOptionsUpdated, this, new GenericEventArgs<DeviceInfo>(device), _logger);
         }
 
-        public bool CanAccessDevice(string userId, string deviceId)
+        public bool CanAccessDevice(User user, string deviceId)
         {
-            if (string.IsNullOrWhiteSpace(userId))
+            if (user == null)
             {
-                throw new ArgumentNullException("userId");
+                throw new ArgumentException("user not found");
             }
             if (string.IsNullOrWhiteSpace(deviceId))
             {
                 throw new ArgumentNullException("deviceId");
-            }
-
-            var user = _userManager.GetUserById(userId);
-
-            if (user == null)
-            {
-                throw new ArgumentException("user not found");
             }
 
             if (!CanAccessDevice(user.Policy, deviceId))

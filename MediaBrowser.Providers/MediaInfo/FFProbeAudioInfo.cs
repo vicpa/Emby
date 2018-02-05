@@ -14,6 +14,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
+using MediaBrowser.Model.Dto;
 
 namespace MediaBrowser.Providers.MediaInfo
 {
@@ -39,50 +40,22 @@ namespace MediaBrowser.Providers.MediaInfo
         public async Task<ItemUpdateType> Probe<T>(T item, CancellationToken cancellationToken)
             where T : Audio
         {
-            var result = await GetMediaInfo(item, cancellationToken).ConfigureAwait(false);
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            await Fetch(item, cancellationToken, result).ConfigureAwait(false);
-
-            return ItemUpdateType.MetadataImport;
-        }
-
-        private const string SchemaVersion = "3";
-
-        private async Task<Model.MediaInfo.MediaInfo> GetMediaInfo(BaseItem item, CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            //var idString = item.Id.ToString("N");
-            //var cachePath = Path.Combine(_appPaths.CachePath,
-            //    "ffprobe-audio",
-            //    idString.Substring(0, 2), idString, "v" + SchemaVersion + _mediaEncoder.Version + item.DateModified.Ticks.ToString(_usCulture) + ".json");
-
-            //try
-            //{
-            //    return _json.DeserializeFromFile<Model.MediaInfo.MediaInfo>(cachePath);
-            //}
-            //catch (FileNotFoundException)
-            //{
-
-            //}
-            //catch (DirectoryNotFoundException)
-            //{
-            //}
-
             var result = await _mediaEncoder.GetMediaInfo(new MediaInfoRequest
             {
-                InputPath = item.Path,
                 MediaType = DlnaProfileType.Audio,
-                Protocol = MediaProtocol.File
+                MediaSource = new MediaSourceInfo
+                {
+                    Path = item.Path,
+                    Protocol = MediaProtocol.File
+                }
 
             }, cancellationToken).ConfigureAwait(false);
 
-            //Directory.CreateDirectory(_fileSystem.GetDirectoryName(cachePath));
-            //_json.SerializeToFile(result, cachePath);
+            cancellationToken.ThrowIfCancellationRequested();
 
-            return result;
+            Fetch(item, cancellationToken, result);
+
+            return ItemUpdateType.MetadataImport;
         }
 
         /// <summary>
@@ -92,7 +65,7 @@ namespace MediaBrowser.Providers.MediaInfo
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <param name="mediaInfo">The media information.</param>
         /// <returns>Task.</returns>
-        protected async Task Fetch(Audio audio, CancellationToken cancellationToken, Model.MediaInfo.MediaInfo mediaInfo)
+        protected void Fetch(Audio audio, CancellationToken cancellationToken, Model.MediaInfo.MediaInfo mediaInfo)
         {
             var mediaStreams = mediaInfo.MediaStreams;
 
@@ -102,12 +75,12 @@ namespace MediaBrowser.Providers.MediaInfo
             audio.RunTimeTicks = mediaInfo.RunTimeTicks;
             audio.Size = mediaInfo.Size;
 
-            var extension = (Path.GetExtension(audio.Path) ?? string.Empty).TrimStart('.');
+            //var extension = (Path.GetExtension(audio.Path) ?? string.Empty).TrimStart('.');
             //audio.Container = extension;
 
-            await FetchDataFromTags(audio, mediaInfo).ConfigureAwait(false);
+            FetchDataFromTags(audio, mediaInfo);
 
-            await _itemRepo.SaveMediaStreams(audio.Id, mediaStreams, cancellationToken).ConfigureAwait(false);
+            _itemRepo.SaveMediaStreams(audio.Id, mediaStreams, cancellationToken);
         }
 
         /// <summary>
@@ -115,7 +88,7 @@ namespace MediaBrowser.Providers.MediaInfo
         /// </summary>
         /// <param name="audio">The audio.</param>
         /// <param name="data">The data.</param>
-        private async Task FetchDataFromTags(Audio audio, Model.MediaInfo.MediaInfo data)
+        private void FetchDataFromTags(Audio audio, Model.MediaInfo.MediaInfo data)
         {
             // Only set Name if title was found in the dictionary
             if (!string.IsNullOrEmpty(data.Name))
@@ -123,7 +96,7 @@ namespace MediaBrowser.Providers.MediaInfo
                 audio.Name = data.Name;
             }
 
-            if (!audio.LockedFields.Contains(MetadataFields.Cast))
+            if (audio.SupportsPeople && !audio.LockedFields.Contains(MetadataFields.Cast))
             {
                 var people = new List<PersonInfo>();
 
@@ -137,7 +110,7 @@ namespace MediaBrowser.Providers.MediaInfo
                     });
                 }
 
-                await _libraryManager.UpdatePeople(audio, people).ConfigureAwait(false);
+                _libraryManager.UpdatePeople(audio, people);
             }
 
             audio.Album = data.Album;

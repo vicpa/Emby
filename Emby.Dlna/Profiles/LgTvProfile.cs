@@ -55,14 +55,14 @@ namespace Emby.Dlna.Profiles
                 {
                     Container = "ts,mpegts,avi,mkv",
                     VideoCodec = "h264",
-                    AudioCodec = "aac,ac3,mp3,dca,dts",
+                    AudioCodec = "aac,ac3,eac3,mp3,dca,dts",
                     Type = DlnaProfileType.Video
                 },
                 new DirectPlayProfile
                 {
                     Container = "mp4,m4v",
                     VideoCodec = "h264,mpeg4",
-                    AudioCodec = "aac,ac3,mp3,dca,dts",
+                    AudioCodec = "aac,ac3,eac3,mp3,dca,dts",
                     Type = DlnaProfileType.Video
                 },
                 new DirectPlayProfile
@@ -153,12 +153,6 @@ namespace Emby.Dlna.Profiles
                        new ProfileCondition
                        {
                            Condition = ProfileConditionType.LessThanEqual,
-                           Property = ProfileConditionValue.VideoFramerate,
-                           Value = "30"
-                       },
-                       new ProfileCondition
-                       {
-                           Condition = ProfileConditionType.LessThanEqual,
                            Property = ProfileConditionValue.VideoLevel,
                            Value = "41"
                        }
@@ -168,7 +162,7 @@ namespace Emby.Dlna.Profiles
                new CodecProfile
                {
                    Type = CodecType.VideoAudio,
-                   Codec = "ac3,aac,mp3",
+                   Codec = "ac3,eac3,aac,mp3",
 
                    Conditions = new[]
                    {
@@ -203,6 +197,12 @@ namespace Emby.Dlna.Profiles
                     Container = "m4v",
                     Type = DlnaProfileType.Video,
                     MimeType = "video/mp4"
+                },
+                new ResponseProfile
+                {
+                    Container = "ts,mpegts",
+                    Type = DlnaProfileType.Video,
+                    MimeType = "video/mpeg"
                 }
             };
         }

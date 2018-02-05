@@ -1,9 +1,11 @@
 ﻿using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.MediaInfo;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Model.Dlna;
+using MediaBrowser.Model.IO;
 
 namespace MediaBrowser.Controller.MediaEncoding
 {
@@ -102,6 +104,8 @@ namespace MediaBrowser.Controller.MediaEncoding
             IProgress<double> progress,
             CancellationToken cancellationToken);
 
+        Task ConvertImage(string inputPath, string outputPath);
+
         /// <summary>
         /// Escapes the subtitle filter path.
         /// </summary>
@@ -114,7 +118,7 @@ namespace MediaBrowser.Controller.MediaEncoding
         void UpdateEncoderPath(string path, string pathType);
         bool SupportsEncoder(string encoder);
 
-        void SetLogFilename(string name);
-        void ClearLogFilename();
+        string[] GetPlayableStreamFileNames(string path, VideoType videoType);
+        IEnumerable<string> GetPrimaryPlaylistVobFiles(string path, IIsoMount isoMount, uint? titleNumber);
     }
 }

@@ -3,17 +3,13 @@ using System.Collections.Generic;
 using System.Reflection;
 using Emby.Server.CinemaMode;
 using Emby.Server.Connect;
-using Emby.Server.Core;
 using Emby.Server.Implementations;
 using Emby.Server.Sync;
 using MediaBrowser.Controller.Connect;
 using MediaBrowser.Controller.Sync;
-using MediaBrowser.IsoMounter;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Model.Logging;
 using MediaBrowser.Model.System;
-using MediaBrowser.Model.Updates;
-using MediaBrowser.Server.Startup.Common;
 
 namespace MediaBrowser.Server.Mono
 {
@@ -44,7 +40,7 @@ namespace MediaBrowser.Server.Mono
 
         protected override void RestartInternal()
         {
-            MainClass.Restart(StartupOptions);
+            MainClass.Restart();
         }
 
         protected override List<Assembly> GetAssembliesWithPartsInternal()
@@ -52,19 +48,9 @@ namespace MediaBrowser.Server.Mono
             var list = new List<Assembly>();
 
             list.Add(GetType().Assembly);
-            list.AddRange(GetLinuxAssemblies());
-
-            return list;
-        }
-
-        private IEnumerable<Assembly> GetLinuxAssemblies()
-        {
-            var list = new List<Assembly>();
-
             list.Add(typeof(DefaultIntroProvider).Assembly);
             list.Add(typeof(ConnectManager).Assembly);
             list.Add(typeof(SyncManager).Assembly);
-            list.Add(typeof(LinuxIsoManager).Assembly);
 
             return list;
         }
@@ -78,26 +64,8 @@ namespace MediaBrowser.Server.Mono
         {
             get
             {
-                return GetMonoVersion() >= new Version(4, 6);
+                return true;
             }
-        }
-
-        private static Version GetMonoVersion()
-        {
-            Type type = Type.GetType("Mono.Runtime");
-            if (type != null)
-            {
-                MethodInfo displayName = type.GetTypeInfo().GetMethod("GetDisplayName", BindingFlags.NonPublic | BindingFlags.Static);
-                var displayNameValue = displayName.Invoke(null, null).ToString().Trim().Split(' ')[0];
-
-                Version version;
-                if (Version.TryParse(displayNameValue, out version))
-                {
-                    return version;
-                }
-            }
-
-            return new Version(1, 0);
         }
     }
 }

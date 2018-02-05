@@ -28,15 +28,7 @@ namespace Emby.Server.Implementations.UserViews
         {
         }
 
-        public override IEnumerable<ImageType> GetSupportedImages(IHasMetadata item)
-        {
-            return new List<ImageType>
-                {
-                    ImageType.Primary
-                };
-        }
-
-        protected override List<BaseItem> GetItemsWithImages(IHasMetadata item)
+        protected override List<BaseItem> GetItemsWithImages(BaseItem item)
         {
             var view = (CollectionFolder)item;
 
@@ -94,12 +86,12 @@ namespace Emby.Server.Implementations.UserViews
             return GetFinalItems(items.Where(i => i.HasImage(ImageType.Primary) || i.HasImage(ImageType.Thumb)), 8);
         }
 
-        protected override bool Supports(IHasMetadata item)
+        protected override bool Supports(BaseItem item)
         {
             return item is CollectionFolder;
         }
 
-        protected override string CreateImage(IHasMetadata item, List<BaseItem> itemsWithImages, string outputPathWithoutExtension, ImageType imageType, int imageIndex)
+        protected override string CreateImage(BaseItem item, List<BaseItem> itemsWithImages, string outputPathWithoutExtension, ImageType imageType, int imageIndex)
         {
             var outputPath = Path.ChangeExtension(outputPathWithoutExtension, ".png");
 
@@ -126,15 +118,7 @@ namespace Emby.Server.Implementations.UserViews
             _libraryManager = libraryManager;
         }
 
-        public override IEnumerable<ImageType> GetSupportedImages(IHasMetadata item)
-        {
-            return new List<ImageType>
-                {
-                    ImageType.Primary
-                };
-        }
-
-        protected override List<BaseItem> GetItemsWithImages(IHasMetadata item)
+        protected override List<BaseItem> GetItemsWithImages(BaseItem item)
         {
             var view = (ManualCollectionsFolder)item;
 
@@ -145,19 +129,19 @@ namespace Emby.Server.Implementations.UserViews
                 Recursive = recursive,
                 IncludeItemTypes = new[] { typeof(BoxSet).Name },
                 Limit = 20,
-                SortBy = new[] { ItemSortBy.Random },
+                OrderBy = new [] { new Tuple<string, SortOrder>(ItemSortBy.Random, SortOrder.Ascending) },
                 DtoOptions = new DtoOptions(false)
             });
 
             return GetFinalItems(items.Where(i => i.HasImage(ImageType.Primary) || i.HasImage(ImageType.Thumb)), 8);
         }
 
-        protected override bool Supports(IHasMetadata item)
+        protected override bool Supports(BaseItem item)
         {
             return item is ManualCollectionsFolder;
         }
 
-        protected override string CreateImage(IHasMetadata item, List<BaseItem> itemsWithImages, string outputPathWithoutExtension, ImageType imageType, int imageIndex)
+        protected override string CreateImage(BaseItem item, List<BaseItem> itemsWithImages, string outputPathWithoutExtension, ImageType imageType, int imageIndex)
         {
             var outputPath = Path.ChangeExtension(outputPathWithoutExtension, ".png");
 

@@ -458,8 +458,7 @@ namespace Emby.Dlna.ContentDirectory
             {
                 Limit = limit,
                 StartIndex = startIndex,
-                SortBy = sortOrders.ToArray(sortOrders.Count),
-                SortOrder = sort.SortOrder,
+                OrderBy = sortOrders.Select(i => new Tuple<string, SortOrder>(i, sort.SortOrder)).ToArray(),
                 User = user,
                 Recursive = true,
                 IsMissing = false,
@@ -487,46 +486,46 @@ namespace Emby.Dlna.ContentDirectory
                 return GetMusicArtistItems(item, null, user, sort, startIndex, limit);
             }
 
-            var collectionFolder = item as ICollectionFolder;
-            if (collectionFolder != null && string.Equals(CollectionType.Music, collectionFolder.CollectionType, StringComparison.OrdinalIgnoreCase))
+            if (item is Genre)
             {
-                return GetMusicFolders(item, user, stubType, sort, startIndex, limit);
+                return GetGenreItems(item, null, user, sort, startIndex, limit);
             }
-            if (collectionFolder != null && string.Equals(CollectionType.Movies, collectionFolder.CollectionType, StringComparison.OrdinalIgnoreCase))
+
+            if (!stubType.HasValue || stubType.Value != StubType.Folder)
             {
-                return GetMovieFolders(item, user, stubType, sort, startIndex, limit);
-            }
-            if (collectionFolder != null && string.Equals(CollectionType.TvShows, collectionFolder.CollectionType, StringComparison.OrdinalIgnoreCase))
-            {
-                return GetTvFolders(item, user, stubType, sort, startIndex, limit);
+                var collectionFolder = item as ICollectionFolder;
+                if (collectionFolder != null && string.Equals(CollectionType.Music, collectionFolder.CollectionType, StringComparison.OrdinalIgnoreCase))
+                {
+                    return GetMusicFolders(item, user, stubType, sort, startIndex, limit);
+                }
+                if (collectionFolder != null && string.Equals(CollectionType.Movies, collectionFolder.CollectionType, StringComparison.OrdinalIgnoreCase))
+                {
+                    return GetMovieFolders(item, user, stubType, sort, startIndex, limit);
+                }
+                if (collectionFolder != null && string.Equals(CollectionType.TvShows, collectionFolder.CollectionType, StringComparison.OrdinalIgnoreCase))
+                {
+                    return GetTvFolders(item, user, stubType, sort, startIndex, limit);
+                }
+
+                var userView = item as UserView;
+                if (userView != null && string.Equals(CollectionType.Folders, userView.ViewType, StringComparison.OrdinalIgnoreCase))
+                {
+                    return GetFolders(item, user, stubType, sort, startIndex, limit);
+                }
             }
 
             if (stubType.HasValue)
             {
-                if (stubType.Value == StubType.People)
-                {
-                    var items = _libraryManager.GetPeopleItems(new InternalPeopleQuery
-                    {
-                        ItemId = item.Id
-
-                    });
-
-                    var result = new QueryResult<ServerItem>
-                    {
-                        Items = items.Select(i => new ServerItem(i)).ToArray(items.Count),
-                        TotalRecordCount = items.Count
-                    };
-
-                    return ApplyPaging(result, startIndex, limit);
-                }
-
                 var person = item as Person;
                 if (person != null)
                 {
                     return GetItemsFromPerson(person, user, startIndex, limit);
                 }
 
-                return ApplyPaging(new QueryResult<ServerItem>(), startIndex, limit);
+                if (stubType.Value != StubType.Folder)
+                {
+                    return ApplyPaging(new QueryResult<ServerItem>(), startIndex, limit);
+                }
             }
 
             var folder = (Folder)item;
@@ -746,6 +745,23 @@ namespace Emby.Dlna.ContentDirectory
             };
         }
 
+        private QueryResult<ServerItem> GetFolders(BaseItem item, User user, StubType? stubType, SortCriteria sort, int? startIndex, int? limit)
+        {
+            var folders = user.RootFolder.GetChildren(user, true)
+                .OrderBy(i => i.SortName)
+                .Select(i => new ServerItem(i)
+                {
+                    StubType = StubType.Folder
+                })
+                .ToArray();
+
+            return new QueryResult<ServerItem>
+            {
+                Items = folders,
+                TotalRecordCount = folders.Length
+            };
+        }
+
         private QueryResult<ServerItem> GetTvFolders(BaseItem item, User user, StubType? stubType, SortCriteria sort, int? startIndex, int? limit)
         {
             var query = new InternalItemsQuery(user)
@@ -840,7 +856,7 @@ namespace Emby.Dlna.ContentDirectory
             query.Parent = parent;
             query.SetUser(user);
 
-            query.OrderBy = new List<Tuple<string, SortOrder>>
+            query.OrderBy = new Tuple<string, SortOrder>[]
             {
                 new Tuple<string, SortOrder> (ItemSortBy.DatePlayed, SortOrder.Descending),
                 new Tuple<string, SortOrder> (ItemSortBy.SortName, SortOrder.Ascending)
@@ -1089,7 +1105,7 @@ namespace Emby.Dlna.ContentDirectory
 
         private QueryResult<ServerItem> GetMusicLatest(BaseItem parent, User user, InternalItemsQuery query)
         {
-            query.SortBy = new string[] { };
+            query.OrderBy = new Tuple<string, SortOrder>[] { };
 
             var items = _userViewManager.GetLatestItems(new LatestItemsQuery
             {
@@ -1106,7 +1122,7 @@ namespace Emby.Dlna.ContentDirectory
 
         private QueryResult<ServerItem> GetNextUp(BaseItem parent, User user, InternalItemsQuery query)
         {
-            query.SortBy = new string[] { };
+            query.OrderBy = new Tuple<string, SortOrder>[] { };
 
             var result = _tvSeriesManager.GetNextUp(new NextUpQuery
             {
@@ -1114,14 +1130,14 @@ namespace Emby.Dlna.ContentDirectory
                 StartIndex = query.StartIndex,
                 UserId = query.User.Id.ToString("N")
 
-            }, new List<Folder> { (Folder)parent }, query.DtoOptions);
+            }, new List<BaseItem> { parent }, query.DtoOptions);
 
             return ToResult(result);
         }
 
         private QueryResult<ServerItem> GetTvLatest(BaseItem parent, User user, InternalItemsQuery query)
         {
-            query.SortBy = new string[] { };
+            query.OrderBy = new Tuple<string, SortOrder>[] { };
 
             var items = _userViewManager.GetLatestItems(new LatestItemsQuery
             {
@@ -1138,7 +1154,7 @@ namespace Emby.Dlna.ContentDirectory
 
         private QueryResult<ServerItem> GetMovieLatest(BaseItem parent, User user, InternalItemsQuery query)
         {
-            query.SortBy = new string[] { };
+            query.OrderBy = new Tuple<string, SortOrder>[] { };
 
             var items = _userViewManager.GetLatestItems(new LatestItemsQuery
             {
@@ -1161,6 +1177,26 @@ namespace Emby.Dlna.ContentDirectory
                 ParentId = parentId,
                 ArtistIds = new[] { item.Id.ToString("N") },
                 IncludeItemTypes = new[] { typeof(MusicAlbum).Name },
+                Limit = limit,
+                StartIndex = startIndex,
+                DtoOptions = GetDtoOptions()
+            };
+
+            SetSorting(query, sort, false);
+
+            var result = _libraryManager.GetItemsResult(query);
+
+            return ToResult(result);
+        }
+
+        private QueryResult<ServerItem> GetGenreItems(BaseItem item, Guid? parentId, User user, SortCriteria sort, int? startIndex, int? limit)
+        {
+            var query = new InternalItemsQuery(user)
+            {
+                Recursive = true,
+                ParentId = parentId,
+                GenreIds = new[] { item.Id.ToString("N") },
+                IncludeItemTypes = new[] { typeof(Movie).Name, typeof(Series).Name },
                 Limit = limit,
                 StartIndex = startIndex,
                 DtoOptions = GetDtoOptions()
@@ -1228,8 +1264,7 @@ namespace Emby.Dlna.ContentDirectory
                 sortOrders.Add(ItemSortBy.SortName);
             }
 
-            query.SortBy = sortOrders.ToArray(sortOrders.Count);
-            query.SortOrder = sort.SortOrder;
+            query.OrderBy = sortOrders.Select(i => new Tuple<string, SortOrder>(i, sort.SortOrder)).ToArray();
         }
 
         private QueryResult<ServerItem> GetItemsFromPerson(Person person, User user, int? startIndex, int? limit)
@@ -1238,7 +1273,7 @@ namespace Emby.Dlna.ContentDirectory
             {
                 PersonIds = new[] { person.Id.ToString("N") },
                 IncludeItemTypes = new[] { typeof(Movie).Name, typeof(Series).Name, typeof(Trailer).Name },
-                SortBy = new[] { ItemSortBy.SortName },
+                OrderBy = new[] { ItemSortBy.SortName }.Select(i => new Tuple<string, SortOrder>(i, SortOrder.Ascending)).ToArray(),
                 Limit = limit,
                 StartIndex = startIndex,
                 DtoOptions = GetDtoOptions()
@@ -1331,7 +1366,6 @@ namespace Emby.Dlna.ContentDirectory
     public enum StubType
     {
         Folder = 0,
-        People = 1,
         Latest = 2,
         Playlists = 3,
         Albums = 4,

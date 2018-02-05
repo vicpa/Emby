@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using MediaBrowser.Controller.Devices;
 using MediaBrowser.Controller.Net;
 using MediaBrowser.Model.Devices;
@@ -86,13 +85,11 @@ namespace MediaBrowser.Api.Devices
 
         public void Post(PostDeviceOptions request)
         {
-            var task = _deviceManager.UpdateDeviceInfo(request.Id, new DeviceOptions
+            _deviceManager.UpdateDeviceInfo(request.Id, new DeviceOptions
             {
                 CustomName = request.CustomName,
                 CameraUploadPath = request.CameraUploadPath
             });
-
-            Task.WaitAll(task);
         }
 
         public object Get(GetDeviceInfo request)
@@ -117,9 +114,7 @@ namespace MediaBrowser.Api.Devices
 
         public void Delete(DeleteDevice request)
         {
-            var task = _deviceManager.DeleteDevice(request.Id);
-
-            Task.WaitAll(task);
+            _deviceManager.DeleteDevice(request.Id);
         }
 
         public void Post(PostCameraUpload request)
@@ -143,7 +138,7 @@ namespace MediaBrowser.Api.Devices
             }
             else
             {
-                var file = Request.Files.First();
+                var file = Request.Files.Length == 0 ? null : Request.Files[0];
 
                 var task = _deviceManager.AcceptCameraUpload(deviceId, file.InputStream, new LocalFileInfo
                 {
